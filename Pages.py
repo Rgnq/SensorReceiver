@@ -23,10 +23,22 @@ class Homepage(QWidget):
         self.HUM_label = QLabel("......")
         self.PRESS_label = QLabel("......")
 
-        self.anim = None  # 用于存储动画对象，防止被垃圾回收
+        self.labels = [self.AX_label, self.AY_label, self.AZ_label, self.GX_label, self.GY_label, self.GZ_label,
+                        self.CO2_label, self.TVOC_label,
+                        self.TEMP_label, self.HUM_label, self.PRESS_label]
+        
+        for label in self.labels:
+            label.setStyleSheet("background-color: rgba(80,80,80,100)")
+
+        self.anim = None  # 用于存储动画对象
         self.settingExpanded = False  # 记录设置面板的展开状态
 
         self.initUI()
+
+        self.setStyleSheet('''
+                        QLabel[text~="MPU6050"], QLabel[text~="气体传感器"], QLabel[text~="温湿压传感器"]
+                        {background-color: #404040}
+                    ''')
     
     def initUI(self):
         # 外层布局
@@ -54,7 +66,7 @@ class Homepage(QWidget):
         self.left_content.addSpacerItem(
             QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         )
-        self.left_content.setStretch(0, 5)
+        self.left_content.setStretch(0, 2)
         self.left_content.setStretch(1, 3)
 
         # 左侧监测部分--最下方命令输入行
@@ -77,12 +89,9 @@ class Homepage(QWidget):
         )
 
         # 设置面板
-        self.right_vertical = SettingsPage()  # 直接使用 SettingsPage 作为右侧设置面板
+        self.right_vertical = CommandPanel()  # 直接使用 SettingsPage 作为右侧设置面板
         self.right_vertical.setFixedWidth(0)  # 初始宽度为0，表示收起状态
         self.main_horizontal.addWidget(self.right_vertical)
-
-        self.main_horizontal.setStretch(0, 4)
-        self.main_horizontal.setStretch(3, 1)   # setting 区域
 
         # 工具按钮
         self.toolButton = QToolButton(self)
@@ -114,7 +123,7 @@ class Homepage(QWidget):
 
     def animateSettingPanel(self, expand: bool):
         start_width = self.right_vertical.width()
-        end_width = 200 if expand else 0
+        end_width = 300 if expand else 0
 
         if self.anim and self.anim.state() == QPropertyAnimation.Running:
             self.anim.stop()
@@ -125,29 +134,29 @@ class Homepage(QWidget):
         self.anim.setEndValue(end_width)
         self.anim.start()
 
-    def _create_mpu6050_grid(self) -> QGridLayout:
+    def _create_mpu6050_grid(self):
         """ MPU6050 六軸數據區塊 """
         grid = QGridLayout()
         grid.setObjectName("mpu6050_grid")
 
-        # 標題
+        # 标题
         title = QLabel("MPU6050")
-        title.setAlignment(Qt.AlignBottom | Qt.AlignLeft)
+        title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
         grid.addWidget(title, 0, 0, 1, 4)
 
-        # 加速度
+        # X轴
         grid.addWidget(QLabel("AX"), 1, 0)
         grid.addWidget(self.AX_label, 1, 1)
         grid.addWidget(QLabel("GX"), 1, 2)
         grid.addWidget(self.GX_label, 1, 3)
 
-        # Y 軸
+        # Y轴
         grid.addWidget(QLabel("AY"), 2, 0)
         grid.addWidget(self.AY_label, 2, 1)
         grid.addWidget(QLabel("GY"), 2, 2)
         grid.addWidget(self.GY_label, 2, 3)
 
-        # Z 軸
+        # Z轴
         grid.addWidget(QLabel("AZ"), 3, 0)
         grid.addWidget(self.AZ_label, 3, 1)
         grid.addWidget(QLabel("GZ"), 3, 2)
@@ -160,13 +169,13 @@ class Homepage(QWidget):
 
         return grid
 
-    def _create_gas_grid(self) -> QGridLayout:
+    def _create_gas_grid(self):
         """ 气体传感器区块 (CO2 + TVOC) """
         grid = QGridLayout()
         grid.setObjectName("gas_grid")
 
         title = QLabel("气体传感器")
-        title.setAlignment(Qt.AlignBottom | Qt.AlignLeft)
+        title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
         grid.addWidget(title, 0, 0, 1, 2)
 
         grid.addWidget(QLabel("CO2"), 1, 0)
@@ -187,13 +196,13 @@ class Homepage(QWidget):
 
         return grid
 
-    def _create_env_grid(self) -> QGridLayout:
+    def _create_env_grid(self):
         """ 温湿压传感器 """
         grid = QGridLayout()
         grid.setObjectName("env_grid")
 
         title = QLabel("温湿压传感器")
-        title.setAlignment(Qt.AlignBottom | Qt.AlignLeft)
+        title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
         grid.addWidget(title, 0, 0, 1, 2)
 
         grid.addWidget(QLabel("温度"), 1, 0)
@@ -212,28 +221,17 @@ class Homepage(QWidget):
 
         return grid
     
-
-class HistoryPage(QWidget):
+class CommandPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.initUI()
-    
-    def initUI(self):
-        layout = QVBoxLayout(self)
-        label = QLabel("这是历史记录页面。")
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
-
-class SettingsPage(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.initUI()
 
         self.autoSaveStatus = True
         self.autoSaveInterval = 60
 
         self.serThread = None  # 用于存储串口对象
         self.serDataSignal = Signal(str)  # 定义一个信号，用于接收串口数据
+
+        self.initUI()
 
     def initUI(self):
         layout = QGridLayout(self)
@@ -264,10 +262,14 @@ class SettingsPage(QWidget):
         self.autosaveCheckBox.setChecked(True)  # 默认启用自动保存
         self.autosaveIntervalLineEdit.setText("60")  # 默认自动保存间隔
 
-        layout.setColumnStretch(0, 3)
-        layout.setColumnStretch(1, 1)
-        layout.setColumnStretch(2,4)
+        layout.setColumnStretch(0, 4)
+        layout.setColumnStretch(1, 0)
+        layout.setColumnStretch(2, 1)
         layout.setRowStretch(6, 1)  # 添加伸缩项，推送内容到顶部
+
+    def startSerialThread(self):
+        currentPort = self.selectPortComboBox.currentText()
+        self.serThread = SerialThread(currentPort)
 
 
     def comboxFillPorts(self):
@@ -278,7 +280,34 @@ class SettingsPage(QWidget):
                 self.selectPortComboBox.addItem(port.device)
         else:
             self.selectPortComboBox.addItem("无可用串口")
+        
+    def receiveData(self):
+        pass
 
+
+
+class HistoryPage(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+    
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        label = QLabel("这是历史记录页面。")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+
+class SettingsPage(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        label = QLabel("设置页面")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+        
 
 class AnalysisPage(QWidget):
     def __init__(self, parent=None):

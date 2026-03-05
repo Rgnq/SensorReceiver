@@ -1,6 +1,7 @@
 
 from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QSizePolicy, QHBoxLayout, QVBoxLayout, QSpacerItem , QStyle
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPainter, QColor
 from Sidebar import Sidebar
 from Menubar import Menubar
 from Pages import Homepage, HistoryPage, SettingsPage, AnalysisPage, LogPage
@@ -8,12 +9,15 @@ from Pages import Homepage, HistoryPage, SettingsPage, AnalysisPage, LogPage
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__()
+
         self.initUI()
 
         self.sidebar.clickedSignal.connect(self.on_sidebar_button_clicked)
         self.pages["实时数据"].sendSignal.connect(self.sendText)
     
     def initUI(self):
+        self.initPages()
+
         # 创建无边框窗口
         self.setWindowTitle("Sensor Receiver")
         self.setGeometry(100, 100, 800, 600)
@@ -22,7 +26,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("""
                 * {
                     font-family: 'Microsoft Yahei';
-                    border-radius: 10px;
+                    border-radius: 14px;
                 }
                 """)
         
@@ -47,36 +51,43 @@ class MainWindow(QMainWindow):
 
         # 创建侧边栏
         self.sidebar = Sidebar()
-        pages_names = ["实时数据", "历史记录","设置", "数据分析", "日志"]
-        pages_icons = {
+
+        for name in self.pages_names:
+            self.sidebar.add_button(name, icon=self.pages_icons[name])
+        self.sidebar.setParent(centralWidget)  # 将侧边栏设置为顶层布局的子组件
+        self.sidebar.raise_()  # 确保侧边栏在最上方
+        self.setSidebarGeometry() # 设置侧边栏位置和大小
+        self.menubar.title.setText(self.pages_names[0])  # 设置初始标题
+        
+        # 创建堆叠窗口
+        self.stacked_widget = QStackedWidget()
+        # 创建页面并添加到堆叠窗口
+        for i, name in enumerate(self.pages_names):
+            page = self.pages[name]
+            self.stacked_widget.addWidget(page)
+        content_layout.addWidget(self.stacked_widget,1)
+
+    def initPages(self):
+        self.pages_names = ["实时数据", "历史记录","设置", "数据分析", "日志"]
+        self.pages_icons = {
             "实时数据": self.style().standardIcon(QStyle.SP_FileDialogDetailedView),
             "历史记录": self.style().standardIcon(QStyle.SP_DirHomeIcon),
             "设置": self.style().standardIcon(QStyle.SP_MessageBoxInformation),
             "数据分析": self.style().standardIcon(QStyle.SP_ComputerIcon),
             "日志": self.style().standardIcon(QStyle.SP_TrashIcon)
         }
-        for name in pages_names:
-            self.sidebar.add_button(name, icon=pages_icons[name])
-        self.sidebar.setParent(centralWidget)  # 将侧边栏设置为顶层布局的子组件
-        self.sidebar.raise_()  # 确保侧边栏在最上方
-        self.setSidebarGeometry() # 设置侧边栏位置和大小
-        self.menubar.title.setText(pages_names[0])  # 设置初始标题
-        
-        # 创建堆叠窗口
-        self.stacked_widget = QStackedWidget()
-        # 创建页面并添加到堆叠窗口
+        self.Homepage = Homepage()
+        self.HistoryPage = HistoryPage()
+        self.SettingsPage = SettingsPage()
+        self.AnalysisPage = AnalysisPage()
+        self.LogPage = LogPage()
         self.pages = {
-            "实时数据": Homepage(),
-            "历史记录": HistoryPage(),
-            "设置": SettingsPage(),
-            "数据分析": AnalysisPage(),
-            "日志": LogPage()
+            "实时数据": self.Homepage,
+            "历史记录": self.HistoryPage,
+            "设置": self.SettingsPage,
+            "数据分析": self.AnalysisPage,
+            "日志": self.LogPage
         }
-        for i, name in enumerate(pages_names):
-            page = self.pages[name]
-            self.stacked_widget.addWidget(page)
-        content_layout.addWidget(self.stacked_widget,1)
-
 
     def setSidebarGeometry(self):
         menubar_h = self.menubar.height()
@@ -89,6 +100,23 @@ class MainWindow(QMainWindow):
     def sendText(self,text):
         #未完成
         self.pages["日志"].append_log(text)
+
+    # def paintEvent(self, event):
+    #     painter = QPainter(self)
+    #     painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+        
+    #     # 画阴影（简易版）
+    #     shadow_color = QColor(0, 0, 0, 80)
+    #     for i in range(1, 11):
+    #         painter.setPen(Qt.NoPen)
+    #         painter.setBrush(QColor(shadow_color.red(), shadow_color.green(), 
+    #                             shadow_color.blue(), shadow_color.alpha() // (i*2)))
+    #         painter.drawRoundedRect(self.rect().adjusted(i,i,-i,-i), 16+i*0.8, 16+i*0.8)
+        
+    #     # 画主体
+    #     painter.setBrush(QColor("#2d2d2d"))
+    #     painter.setPen(Qt.NoPen)
+    #     painter.drawRoundedRect(self.rect(), 16, 16)
         
     def resizeEvent(self, event):
         super().resizeEvent(event)
