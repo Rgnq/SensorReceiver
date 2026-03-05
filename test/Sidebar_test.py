@@ -1,12 +1,6 @@
 from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget, QPushButton, QLabel, QStyle
-from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QSizePolicy
-import sys
-
-# filepath: d:/Homework/Python/SensorReceiver/Sidebar.py
-# coding: utf-8
-
 
 class SidebarButton(QPushButton):
     def __init__(self, text, icon=None):
@@ -111,16 +105,10 @@ class MainWindow(QMainWindow):
     def onButtonClicked(self, index):
         button = self.buttons[index]
         
-        # If clicking the same button, toggle sidebar
         if self.current_button == button:
             self.toggleSidebar()
-            self.current_button.setChecked(True)
+            self.current_button.setChecked(True)      #确保选中状态
         else:
-            # Switch to new tab
-            #if not self.sidebar_expanded:
-            #    self.expandSidebar()
-            
-            # Uncheck previous button
             if self.current_button:
                 self.current_button.setChecked(False)
             
@@ -164,10 +152,3 @@ class MainWindow(QMainWindow):
         # anim.finished.connect(on_finished)
         anim.start()
         self._sidebar_anim = anim
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())

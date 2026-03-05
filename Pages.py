@@ -6,6 +6,8 @@ from Serial import SerialThread
 
 
 class Homepage(QWidget):
+    sendSignal = Signal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         
@@ -24,34 +26,28 @@ class Homepage(QWidget):
         self.anim = None  # 用于存储动画对象，防止被垃圾回收
         self.settingExpanded = False  # 记录设置面板的展开状态
 
-
         self.initUI()
     
     def initUI(self):
-        # ── 外层布局 ──
+        # 外层布局
         self.main_horizontal = QHBoxLayout(self)
         self.main_horizontal.setObjectName("main_horizontal")
 
         # 左侧监测部分
         self.left_content = QVBoxLayout()
         self.left_content.setObjectName("left_content")
-
         # 左侧监测部分--上方三块传感器数据区域
         self.sensor_horizontal = QHBoxLayout()
         self.sensor_horizontal.setObjectName("sensor_horizontal")
-
         # 第一块：MPU6050 六轴传感器数据区块
         self.mpu6050_group = self._create_mpu6050_grid()
         self.sensor_horizontal.addLayout(self.mpu6050_group, stretch=2)
-
         # 第二块：气体传感器区块 (CO2 + TVOC)
         self.gas_group = self._create_gas_grid()
         self.sensor_horizontal.addLayout(self.gas_group, stretch=1)
-
         # 第三块：温湿压传感器区块
         self.env_group = self._create_env_grid()
         self.sensor_horizontal.addLayout(self.env_group, stretch=1)
-
         self.left_content.addLayout(self.sensor_horizontal)
 
         # 左侧监测部分--下方留白
@@ -66,7 +62,8 @@ class Homepage(QWidget):
         self.sendline = QLineEdit()
         self.sendline.setPlaceholderText("输入命令并按回车发送")
         self.sendlineButton = QPushButton("发送")
-        #self.sendline.returnPressed.connect(self.send_command)
+        self.sendline.returnPressed.connect(self.sendText)
+        self.sendlineButton.clicked.connect(self.sendText)
         leftdown_horizontal.addWidget(self.sendline)
         leftdown_horizontal.addWidget(self.sendlineButton)
 
@@ -98,6 +95,10 @@ class Homepage(QWidget):
 
         # self.retranslateUi(self)
         # QMetaObject.connectSlotsByName(self)   
+
+    def sendText(self):
+        self.sendSignal.emit(self.sendline.text())
+        self.sendline.setText("")
 
     def toggleSettingPanel(self):
         if self.settingExpanded:
@@ -297,6 +298,10 @@ class LogPage(QWidget):
 
     def initUI(self):
         layout = QVBoxLayout(self)
-        label = QLabel("这是日志页面。")
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
+        self.textedit = QTextEdit()
+        self.textedit.setReadOnly(True)
+        self.textedit.textChanged.connect(self.textedit.ensureCursorVisible)
+        layout.addWidget(self.textedit)
+    
+    def append_log(self, log: str):
+        self.textedit.append(log)
