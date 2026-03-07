@@ -7,20 +7,22 @@ from Menubar import Menubar
 from Pages import Homepage, HistoryPage, SettingsPage, AnalysisPage, LogPage
 
 class MainWindow(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self):
         super().__init__()
 
         self.initUI()
 
         self.sidebar.clickedSignal.connect(self.on_sidebar_button_clicked)
-        self.pages["实时数据"].sendSignal.connect(self.sendText)
+        self.Homepage.sendSignal.connect(self.sendText)
+        self.Homepage.right_vertical.serDataSignal.connect(self.LogPage.append_log)
+        self.Homepage.right_vertical.serLogSignal.connect(self.LogPage.append_log)
     
     def initUI(self):
         self.initPages()
 
         # 创建无边框窗口
         self.setWindowTitle("Sensor Receiver")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 1200, 900)
         self.setWindowFlag(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet("""
@@ -51,7 +53,6 @@ class MainWindow(QMainWindow):
 
         # 创建侧边栏
         self.sidebar = Sidebar()
-
         for name in self.pages_names:
             self.sidebar.add_button(name, icon=self.pages_icons[name])
         self.sidebar.setParent(centralWidget)  # 将侧边栏设置为顶层布局的子组件
@@ -99,24 +100,7 @@ class MainWindow(QMainWindow):
 
     def sendText(self,text):
         #未完成
-        self.pages["日志"].append_log(text)
-
-    # def paintEvent(self, event):
-    #     painter = QPainter(self)
-    #     painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-        
-    #     # 画阴影（简易版）
-    #     shadow_color = QColor(0, 0, 0, 80)
-    #     for i in range(1, 11):
-    #         painter.setPen(Qt.NoPen)
-    #         painter.setBrush(QColor(shadow_color.red(), shadow_color.green(), 
-    #                             shadow_color.blue(), shadow_color.alpha() // (i*2)))
-    #         painter.drawRoundedRect(self.rect().adjusted(i,i,-i,-i), 16+i*0.8, 16+i*0.8)
-        
-    #     # 画主体
-    #     painter.setBrush(QColor("#2d2d2d"))
-    #     painter.setPen(Qt.NoPen)
-    #     painter.drawRoundedRect(self.rect(), 16, 16)
+        self.LogPage.append_log(text)
         
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -126,4 +110,6 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
         if self.menubar.timer.isActive():
             self.menubar.timer.stop()
+        if self.Homepage.right_vertical.serState:
+            self.Homepage.right_vertical.stopSerialThread()
         

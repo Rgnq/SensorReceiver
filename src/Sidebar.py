@@ -119,7 +119,7 @@ class Sidebar(QWidget):
         if self._sidebar_anim and self._sidebar_anim.state() == QPropertyAnimation.Running:
             self._sidebar_anim.stop()
         anim = QPropertyAnimation(self, property_name)
-        anim.setDuration(500)
+        anim.setDuration(200)
         anim.setStartValue(start_width)
         anim.setEndValue(end_width)
         anim.setEasingCurve(QEasingCurve.InOutQuad)

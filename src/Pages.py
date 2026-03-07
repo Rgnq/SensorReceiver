@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolB
 from PySide6.QtCore import Qt, QPropertyAnimation, Signal
 from serial.tools import list_ports
 from Serial import SerialThread
+from PlotWidget import SensorPlotter
 
 
 class Homepage(QWidget):
@@ -27,8 +28,13 @@ class Homepage(QWidget):
                         self.CO2_label, self.TVOC_label,
                         self.TEMP_label, self.HUM_label, self.PRESS_label]
         
+        self.dataNames = ["AX","AY","AZ","GX","GY","GZ","CO2","TVOC","温度","湿度","压强"]
+        self.MPU6050_Data = dict(zip(self.dataNames[0:6],[0 for i in range(6)]))
+        self.Gas_Data = dict(zip(self.dataNames[6:8],[0 for i in range(2)]))
+        self.THP_Data = dict(zip(self.dataNames[8:11],[0 for i in range(3)]))
+
         for label in self.labels:
-            label.setStyleSheet("background-color: rgba(80,80,80,100)")
+            label.setStyleSheet("background-color: rgba(80,80,80,127)")
 
         self.anim = None  # 用于存储动画对象
         self.settingExpanded = False  # 记录设置面板的展开状态
@@ -39,7 +45,11 @@ class Homepage(QWidget):
                         QLabel[text~="MPU6050"], QLabel[text~="气体传感器"], QLabel[text~="温湿压传感器"]
                         {background-color: #404040}
                     ''')
-    
+
+        self.right_vertical.serDataSignal.connect(self.updateDataDisplay)
+        self.right_vertical.stopSignal.connect(self.clearData)
+
+
     def initUI(self):
         # 外层布局
         self.main_horizontal = QHBoxLayout(self)
@@ -58,14 +68,16 @@ class Homepage(QWidget):
         self.gas_group = self._create_gas_grid()
         self.sensor_horizontal.addLayout(self.gas_group, stretch=1)
         # 第三块：温湿压传感器区块
-        self.env_group = self._create_env_grid()
+        self.env_group = self._create_thp_grid()
         self.sensor_horizontal.addLayout(self.env_group, stretch=1)
         self.left_content.addLayout(self.sensor_horizontal)
 
         # 左侧监测部分--下方留白
-        self.left_content.addSpacerItem(
-            QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        )
+        self.RegionPlot = SensorPlotter()
+        # self.left_content.addSpacerItem(
+        #     QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        # )
+        self.left_content.addWidget(self.RegionPlot)
         self.left_content.setStretch(0, 2)
         self.left_content.setStretch(1, 3)
 
@@ -109,6 +121,27 @@ class Homepage(QWidget):
         self.sendSignal.emit(self.sendline.text())
         self.sendline.setText("")
 
+    def updateDataDisplay(self,dataText:str):
+        try:
+            dataList = dataText.strip("\n").split(",")
+            dataListInt = list(map(eval, dataList))
+            for i, data in enumerate(dataList):
+                self.labels[i].setText(data)
+            self.MPU6050_Data = dict(zip(self.dataNames[0:6],dataListInt[0:6]))
+            self.Gas_Data = dict(zip(self.dataNames[6:8],dataListInt[6:8]))
+            self.THP_Data = dict(zip(self.dataNames[8:11],dataListInt[8:11]))
+            self.RegionPlot.update_mpu(self.MPU6050_Data)
+            self.RegionPlot.update_gas(self.Gas_Data)
+            self.RegionPlot.update_thp(self.THP_Data)
+        except Exception as e:
+            self.right_vertical.serLogSignal.emit(f"错误：{e}")
+    
+    def clearData(self):
+        for label in self.labels:
+            label.setText(". . .")
+        self.RegionPlot.reset()
+
+
     def toggleSettingPanel(self):
         if self.settingExpanded:
             # 收起设置面板
@@ -135,7 +168,7 @@ class Homepage(QWidget):
         self.anim.start()
 
     def _create_mpu6050_grid(self):
-        """ MPU6050 六軸數據區塊 """
+        """ MPU6050 """
         grid = QGridLayout()
         grid.setObjectName("mpu6050_grid")
 
@@ -196,7 +229,7 @@ class Homepage(QWidget):
 
         return grid
 
-    def _create_env_grid(self):
+    def _create_thp_grid(self):
         """ 温湿压传感器 """
         grid = QGridLayout()
         grid.setObjectName("env_grid")
@@ -222,14 +255,18 @@ class Homepage(QWidget):
         return grid
     
 class CommandPanel(QWidget):
+    serDataSignal = Signal(str)  # 定义一个信号，用于接收串口数据
+    serLogSignal = Signal(str)
+    stopSignal = Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.autoSaveStatus = True
         self.autoSaveInterval = 60
 
-        self.serThread = None  # 用于存储串口对象
-        self.serDataSignal = Signal(str)  # 定义一个信号，用于接收串口数据
+        self.serThread = None  # 用于存储串口线程
+        self.serState = False
 
         self.initUI()
 
@@ -239,7 +276,7 @@ class CommandPanel(QWidget):
         self.selectPortComboBox = QComboBox()
         self.refreshPortsButton = QPushButton("刷新")
         self.connectButton = QPushButton("连/断")
-        self.setBaudrateLineEdit = QLineEdit()
+        self.BaudrateLineEdit = QLineEdit()
         self.autosaveCheckBox = QCheckBox("启用")
         self.autosaveIntervalLineEdit = QLineEdit()
         self.autosaveIntervalButton = QPushButton("设置")
@@ -248,12 +285,13 @@ class CommandPanel(QWidget):
         layout.addWidget(self.refreshPortsButton, 0, 1)
         layout.addWidget(self.selectPortComboBox, 1, 0)
         layout.addWidget(self.connectButton, 1, 1)
-        self.comboxFillPorts()  # 初始化时填充可用串口列表
-        self.refreshPortsButton.clicked.connect(self.comboxFillPorts)  # 刷新按钮连接槽函数
+        self.FillcomboxPorts()  # 初始化时填充可用串口列表
+        self.refreshPortsButton.clicked.connect(self.FillcomboxPorts)  # 刷新按钮连接槽函数
+        self.connectButton.clicked.connect(self.toggleSerialIO)
 
         layout.addWidget(QLabel("波特率"), 2, 0)
-        layout.addWidget(self.setBaudrateLineEdit, 3, 0)
-        self.setBaudrateLineEdit.setText("9600")  # 默认波特率
+        layout.addWidget(self.BaudrateLineEdit, 3, 0)
+        self.BaudrateLineEdit.setText("9600")  # 默认波特率
 
         layout.addWidget(QLabel("保存间隔(s)"), 4, 0)
         layout.addWidget(self.autosaveCheckBox, 4, 1)
@@ -267,12 +305,7 @@ class CommandPanel(QWidget):
         layout.setColumnStretch(2, 1)
         layout.setRowStretch(6, 1)  # 添加伸缩项，推送内容到顶部
 
-    def startSerialThread(self):
-        currentPort = self.selectPortComboBox.currentText()
-        self.serThread = SerialThread(currentPort)
-
-
-    def comboxFillPorts(self):
+    def FillcomboxPorts(self):
         self.selectPortComboBox.clear()
         ports = list_ports.comports()
         if ports:
@@ -280,9 +313,36 @@ class CommandPanel(QWidget):
                 self.selectPortComboBox.addItem(port.device)
         else:
             self.selectPortComboBox.addItem("无可用串口")
+
+    def toggleSerialIO(self):
+        if self.serState:
+            self.stopSerialThread()
+            self.stopSignal.emit()
+        else:
+            self.startSerialThread()
+
+
+    def startSerialThread(self):
+        try:
+            self.stopSerialThread()
+            currentPort = self.selectPortComboBox.currentText()
+            baudrate = int(self.BaudrateLineEdit.text())
+            self.serThread = SerialThread(currentPort,baudrate,timeout=1)
+            self.serThread.data_signal.connect(self.serDataSignal.emit)
+            self.serThread.status_signal.connect(self.serLogSignal.emit)
+            self.serThread.start()
+            self.serState = True
+        except Exception as e:
+            self.serDataSignal.emit(f"Error: {e}")
         
-    def receiveData(self):
-        pass
+    def stopSerialThread(self):
+        if self.serState:
+            self.serThread.stop()
+            self.serState = False
+            
+    
+    def LogText(self,text):
+        self.serDataSignal.emit(text)
 
 
 
