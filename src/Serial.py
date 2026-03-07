@@ -32,7 +32,7 @@ class SerialThread(QThread):
                     self.status_signal.emit(f"连接失败:{e}")
                     errorTimes += 1
                     if errorTimes > 5:
-                        self.status_signal.emit(f"请重新设置")
+                        self.status_signal.emit(f"请断开后重新设置")
                         self.stop()
                     time.sleep(1)
                     continue
@@ -41,9 +41,9 @@ class SerialThread(QThread):
                     line = self.serial.readline().decode('utf-8', errors='replace').strip()
                     if line:
                         self.data_signal.emit(line)
-                ##模拟
-                #self.data_signal.emit(f"{random.uniform(-1, 1)},{random.uniform(-1, 1)},{random.uniform(-1, 1)},{random.uniform(-100, 100)},{random.uniform(-100, 100)},{random.uniform(-100, 100)},{random.uniform(400, 1000)},{random.uniform(0, 500)},{random.uniform(20, 30)},{random.uniform(40, 60)},{random.uniform(900, 1100)}")
-                #time.sleep(1)
+                #模拟
+                self.data_signal.emit(f"{random.uniform(-1, 1)},{random.uniform(-1, 1)},{random.uniform(-1, 1)},{random.uniform(-100, 100)},{random.uniform(-100, 100)},{random.uniform(-100, 100)},{random.uniform(400, 1000)},{random.uniform(0, 500)},{random.uniform(20, 30)},{random.uniform(40, 60)},{random.uniform(900, 1100)}")
+                time.sleep(1)
             except Exception as e:
                 self.status_signal.emit(f"错误:{e}")
 

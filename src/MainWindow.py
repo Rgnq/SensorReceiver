@@ -1,7 +1,7 @@
 
 from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QSizePolicy, QHBoxLayout, QVBoxLayout, QSpacerItem , QStyle
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPainter, QColor
+from PySide6.QtGui import QGuiApplication
 from Sidebar import Sidebar
 from Menubar import Menubar
 from Pages import Homepage, HistoryPage, SettingsPage, AnalysisPage, LogPage
@@ -13,9 +13,11 @@ class MainWindow(QMainWindow):
         self.initUI()
 
         self.sidebar.clickedSignal.connect(self.on_sidebar_button_clicked)
-        self.Homepage.sendSignal.connect(self.sendText)
-        self.Homepage.right_vertical.serDataSignal.connect(self.LogPage.append_log)
-        self.Homepage.right_vertical.serLogSignal.connect(self.LogPage.append_log)
+        self.Homepage.sendTextSignal.connect(self.LogInfo)
+        self.Homepage.sendErrorSignal.connect(self.LogError)
+        self.Homepage.right_vertical.serDataSignal.connect(self.LogInfo)
+        self.Homepage.right_vertical.serLogSignal.connect(self.LogError)
+        self.SettingsPage.pathSaveSignal.connect(self.setSavePath)
     
     def initUI(self):
         self.initPages()
@@ -31,6 +33,7 @@ class MainWindow(QMainWindow):
                     border-radius: 14px;
                 }
                 """)
+        self.movecenter()
         
         # 创建最顶层布局
         centralWidget = QWidget()
@@ -98,9 +101,27 @@ class MainWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(index)
         self.menubar.title.setText(self.sidebar.buttons[index].original_text)
 
-    def sendText(self,text):
-        #未完成
-        self.LogPage.append_log(text)
+    def LogError(self,text):
+        self.LogPage.append_log(f'{text}',0)
+
+    def LogWarning(self,text):
+        self.LogPage.append_log(f'{text}',1)
+
+    def LogInfo(self,text):
+        self.LogPage.append_log(f'{text}',2)
+
+    def setSavePath(self,path):
+        self.Homepage.pathSave = path
+
+    def movecenter(self):
+        # 获取屏幕可用区域的中心点
+        center_point = QGuiApplication.primaryScreen().availableGeometry().center()
+        # 获取窗口当前的 frame 几何信息（包含标题栏、边框等）
+        frame_geo = self.frameGeometry()
+        # 把 frame 的中心移动到屏幕中心
+        frame_geo.moveCenter(center_point)
+        # 应用新位置（只移动左上角坐标）
+        self.move(frame_geo.topLeft())
         
     def resizeEvent(self, event):
         super().resizeEvent(event)

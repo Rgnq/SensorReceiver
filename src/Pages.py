@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QWidget, QTabWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
-                            QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox)
+                            QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox, QFileDialog)
 from PySide6.QtCore import Qt, QPropertyAnimation, Signal
 from serial.tools import list_ports
 from Serial import SerialThread
@@ -8,7 +8,8 @@ import os
 import time
 
 class Homepage(QWidget):
-    sendSignal = Signal(str)
+    sendTextSignal = Signal(str)
+    sendErrorSignal = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -33,6 +34,8 @@ class Homepage(QWidget):
         self.MPU6050_Data = dict(zip(self.dataNames[0:6],[0 for i in range(6)]))
         self.Gas_Data = dict(zip(self.dataNames[6:8],[0 for i in range(2)]))
         self.THP_Data = dict(zip(self.dataNames[8:11],[0 for i in range(3)]))
+
+        self.pathSave = "history"
 
         for label in self.labels:
             label.setStyleSheet("background-color: rgba(80,80,80,127)")
@@ -120,8 +123,16 @@ class Homepage(QWidget):
         # QMetaObject.connectSlotsByName(self)   
 
     def sendText(self):
-        self.sendSignal.emit(self.sendline.text())
-        self.sendline.setText("")
+        try:
+            if self.right_vertical.serState:
+                self.sendTextSignal.emit(self.sendline.text())
+                self.right_vertical.serThread.serial.write(self.sendline.text()+"\n")
+                self.sendline.setText("")
+            else:
+                self.sendTextSignal.emit("尚未连接")
+                self.sendline.setText("")
+        except Exception as e:
+            self.sendErrorSignal.emit(e)
 
     def updateDataDisplay(self,dataText:str):
         try:
@@ -137,7 +148,8 @@ class Homepage(QWidget):
             self.RegionPlot.update_thp(self.THP_Data)
             if self.right_vertical.autoSaveStatus:
                 if self.runtimeSave is None:
-                    path = f"history/localsave_{time.strftime("%G_%m_%d_%H_%M_%S")}"
+                    nowtime = time.strftime("%G_%m_%d_%H_%M_%S")
+                    path = f'{self.pathSave}/localsave_{nowtime}.csv'
                     os.makedirs(os.path.dirname(path), exist_ok=True)
                     self.runtimeSave = open(path,'a+',encoding='utf-8')
                 if self.runtimeSave:
@@ -174,7 +186,7 @@ class Homepage(QWidget):
             self.anim.stop()
 
         self.anim = QPropertyAnimation(self.right_vertical, b"maximumWidth")
-        self.anim.setDuration(300)
+        self.anim.setDuration(200)
         self.anim.setStartValue(start_width)
         self.anim.setEndValue(end_width)
         self.anim.start()
@@ -374,17 +386,51 @@ class HistoryPage(QWidget):
         
 
 class SettingsPage(QWidget):
+    pathSaveSignal = Signal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
+        
         self.initUI()
 
     def initUI(self):
-        layout = QVBoxLayout(self)
-        label = QLabel("设置页面")
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
-        
+        layout = QGridLayout(self)
+        nowDir = os.getcwd()
 
+        pathLabel = QLabel("数据保存目录")
+        self.pathLineEdit = QLineEdit()
+        self.pathLineEdit.setText(f"{nowDir}\\history")
+        self.browserFileBtn = QPushButton()
+        self.browserFileBtn.setText("浏览")
+        self.browserFileBtn.clicked.connect(self.select_folder)
+        self.pathBtn = QPushButton()
+        self.pathBtn.setText("设置")
+        self.pathBtn.clicked.connect(self.on_pathBtn_click)
+        layout.addWidget(pathLabel,0,0)
+        layout.addWidget(self.pathLineEdit,1,0)
+        layout.addWidget(self.browserFileBtn,1,1)
+        layout.addWidget(self.pathBtn,1,2)
+        
+        layout.setColumnStretch(0,1)
+        layout.setRowStretch(2,1)
+
+    def on_pathBtn_click(self):
+        directory = self.pathLineEdit.text().strip()
+        self.pathSaveSignal.emit(directory)
+    
+    def select_folder(self):
+        # 弹出文件夹选择对话框
+        folder_path = QFileDialog.getExistingDirectory(
+            self,                    # 父窗口
+            "请选择文件夹",           # 标题
+            self.pathLineEdit.text()    # 默认打开的路径（上一次选择的路径）
+        )
+
+        if folder_path:
+            self.pathLineEdit.setText(folder_path)
+            self.on_pathBtn_click()
+
+        
 class AnalysisPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -392,21 +438,40 @@ class AnalysisPage(QWidget):
 
     def initUI(self):
         layout = QVBoxLayout(self)
-        label = QLabel("这是数据分析页面。")
+        label = QLabel("未实现")
         label.setAlignment(Qt.AlignCenter)
         layout.addWidget(label)
 
 class LogPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        self.LogLevel = 0 # 0-Error 1-Warning 2-Info
+        self.levelNames = ["Error","Warning","Info"]
+
         self.initUI()
 
     def initUI(self):
         layout = QVBoxLayout(self)
+        self.LogLevelLabel = QLabel()
+        self.LogLevelLabel.setText(f'日志报告等级：{self.levelNames[self.LogLevel]}')
+        self.LogLevelToggleBtn = QPushButton()
+        self.LogLevelToggleBtn.setText("切换")
+        self.LogLevelToggleBtn.setToolTip("切换日志过滤等级")
+        self.LogLevelToggleBtn.clicked.connect(self.on_LogBtn_click)
+
         self.textedit = QTextEdit()
         self.textedit.setReadOnly(True)
         self.textedit.textChanged.connect(self.textedit.ensureCursorVisible)
-        layout.addWidget(self.textedit)
+
+        layout.addWidget(self.LogLevelLabel)
+        layout.addWidget(self.LogLevelToggleBtn)
+        layout.addWidget(self.textedit,1)
     
-    def append_log(self, log: str):
-        self.textedit.append(log)
+    def on_LogBtn_click(self):
+        self.LogLevel = (self.LogLevel + 1) % 3
+        self.LogLevelLabel.setText(f'日志报告等级：{self.levelNames[self.LogLevel]}')
+
+    def append_log(self, log: str, level: int):
+        if level <= self.LogLevel:
+            self.textedit.append(log)
