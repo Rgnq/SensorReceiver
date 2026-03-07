@@ -1,10 +1,11 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
+from PySide6.QtWidgets import (QWidget, QTabWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
                             QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox)
 from PySide6.QtCore import Qt, QPropertyAnimation, Signal
 from serial.tools import list_ports
 from Serial import SerialThread
 from PlotWidget import SensorPlotter
-
+import os
+import time
 
 class Homepage(QWidget):
     sendSignal = Signal(str)
@@ -38,6 +39,7 @@ class Homepage(QWidget):
 
         self.anim = None  # 用于存储动画对象
         self.settingExpanded = False  # 记录设置面板的展开状态
+        self.runtimeSave = None
 
         self.initUI()
 
@@ -133,6 +135,13 @@ class Homepage(QWidget):
             self.RegionPlot.update_mpu(self.MPU6050_Data)
             self.RegionPlot.update_gas(self.Gas_Data)
             self.RegionPlot.update_thp(self.THP_Data)
+            if self.right_vertical.autoSaveStatus:
+                if self.runtimeSave is None:
+                    path = f"history/localsave_{round(self.RegionPlot.start_time)}"
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                    self.runtimeSave = open(path,'a+',encoding='utf-8')
+                if self.runtimeSave:
+                    self.runtimeSave.write(f"{time.time()},"+dataText+"\n")
         except Exception as e:
             self.right_vertical.serLogSignal.emit(f"错误：{e}")
     
@@ -140,6 +149,9 @@ class Homepage(QWidget):
         for label in self.labels:
             label.setText(". . .")
         self.RegionPlot.reset()
+        if self.runtimeSave:
+            self.runtimeSave.close()
+            self.runtimeSave = None
 
 
     def toggleSettingPanel(self):
@@ -293,12 +305,12 @@ class CommandPanel(QWidget):
         layout.addWidget(self.BaudrateLineEdit, 3, 0)
         self.BaudrateLineEdit.setText("9600")  # 默认波特率
 
-        layout.addWidget(QLabel("保存间隔(s)"), 4, 0)
+        layout.addWidget(QLabel("自动保存"), 4, 0)
         layout.addWidget(self.autosaveCheckBox, 4, 1)
-        layout.addWidget(self.autosaveIntervalLineEdit, 5, 0)
-        layout.addWidget(self.autosaveIntervalButton, 5, 1)
+        # layout.addWidget(self.autosaveIntervalLineEdit, 5, 0)
+        # layout.addWidget(self.autosaveIntervalButton, 5, 1)
         self.autosaveCheckBox.setChecked(True)  # 默认启用自动保存
-        self.autosaveIntervalLineEdit.setText("60")  # 默认自动保存间隔
+        # self.autosaveIntervalLineEdit.setText("60")  # 默认自动保存间隔
 
         layout.setColumnStretch(0, 4)
         layout.setColumnStretch(1, 0)
@@ -352,10 +364,14 @@ class HistoryPage(QWidget):
         self.initUI()
     
     def initUI(self):
-        layout = QVBoxLayout(self)
-        label = QLabel("这是历史记录页面。")
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
+        main_layout = QVBoxLayout(self)
+        tabWidget = QTabWidget()
+        main_layout.addWidget(tabWidget)
+
+        localHistory_tab = QWidget()
+        localHistory_layout = QVBoxLayout()
+        localHistory_tab.setLayout(localHistory_layout)
+        
 
 class SettingsPage(QWidget):
     def __init__(self, parent=None):

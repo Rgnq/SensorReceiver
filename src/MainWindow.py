@@ -112,4 +112,6 @@ class MainWindow(QMainWindow):
             self.menubar.timer.stop()
         if self.Homepage.right_vertical.serState:
             self.Homepage.right_vertical.stopSerialThread()
+        if self.Homepage.runtimeSave:
+            self.Homepage.runtimeSave.close()
         
