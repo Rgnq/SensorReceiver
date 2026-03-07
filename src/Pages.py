@@ -1,5 +1,5 @@
-from PySide6.QtWidgets import (QWidget, QTabWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
-                            QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox, QFileDialog)
+from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
+                            QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox)
 from PySide6.QtCore import Qt, QPropertyAnimation, Signal
 from serial.tools import list_ports
 from Serial import SerialThread
@@ -376,13 +376,120 @@ class HistoryPage(QWidget):
         self.initUI()
     
     def initUI(self):
-        main_layout = QVBoxLayout(self)
-        tabWidget = QTabWidget()
-        main_layout.addWidget(tabWidget)
+        nowDir = os.getcwd()
 
+        main_layout = QVBoxLayout(self)
+        top_layout = QHBoxLayout()
+        self.pathSaveLineEdit = QLineEdit()
+        self.pathSaveLineEdit.setText(f"{nowDir}\\history")
+        self.browserFileBtn = QPushButton()
+        self.browserFileBtn.setText("浏览...")
+        self.browserFileBtn.clicked.connect(self.select_folder)
+        self.pathBtnConfirm = QPushButton()
+        self.pathBtnConfirm.setText("检索")
+        self.pathBtnConfirm.clicked.connect(self.load_files)
+        top_layout.addWidget(self.pathSaveLineEdit,1)
+        top_layout.addWidget(self.browserFileBtn)
+        top_layout.addWidget(self.pathBtnConfirm)
+        main_layout.addLayout(top_layout)
+
+        self.tabWidget = QTabWidget()
+        main_layout.addWidget(self.tabWidget)
+        
         localHistory_tab = QWidget()
         localHistory_layout = QVBoxLayout()
         localHistory_tab.setLayout(localHistory_layout)
+        self.localListWidget = QListWidget()
+        localHistory_layout.addWidget(self.localListWidget)
+        self.tabWidget.addTab(localHistory_tab,"实时数据记录")
+        
+        self.plotBtn = QPushButton()
+        self.plotBtn.setText("绘制图像")
+        self.plotBtn.clicked.connect(self.plotData)
+        main_layout.addWidget(self.plotBtn)
+
+        self.RegionPlot = SensorPlotter()
+        main_layout.addWidget(self.RegionPlot,1)
+
+    def select_folder(self):
+        # 弹出文件夹选择对话框
+        folder_path = QFileDialog.getExistingDirectory(
+            self,                    # 父窗口
+            "请选择文件夹",           # 标题
+            self.pathSaveLineEdit.text()    # 默认打开的路径
+        )
+
+        if folder_path:
+            self.pathSaveLineEdit.setText(folder_path)
+    
+    def load_files(self):
+        self.directory = self.pathSaveLineEdit.text().strip()
+        if not os.path.isdir(self.directory):
+            QMessageBox.warning(self, "Error", "无效目录路径")
+            return
+
+        self.localListWidget.clear()
+        files = [f for f in os.listdir(self.directory) if os.path.isfile(os.path.join(self.directory, f))]
+        # Filter for data files, e.g., .csv or .db; assuming .csv for now.
+        data_files = [f for f in files if f.endswith('.csv')]  # Change to '.db' for SQLite
+        if not data_files:
+            QMessageBox.information(self, "Info", "无数据记录")
+            return
+
+        self.localListWidget.addItems(data_files)
+    
+    def plotData(self):
+        selected_items = self.localListWidget.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "Info", "未选中数据记录")
+            return
+
+        selected_file = selected_items[0].text()
+        file_path = os.path.join(self.directory, selected_file)
+
+        try:
+
+            with open(file_path,'r',encoding='utf-8') as f:
+                dataList = []
+                total_names = ['AX','AY','AZ','GX','GY','GZ','CO2','TVOC','温度','湿度','压强']
+                mpu_dist = {'AX':{'times':[],'values':[]},'AY':{'times':[],'values':[]},'AZ':{'times':[],'values':[]},
+                            'GX':{'times':[],'values':[]},'GY':{'times':[],'values':[]},'GZ':{'times':[],'values':[]}}
+                gas_dist = {'CO2':{'times':[],'values':[]},'TVOC':{'times':[],'values':[]}}
+                thp_dist = {'温度':{'times':[],'values':[]},'湿度':{'times':[],'values':[]},'压强':{'times':[],'values':[]}}
+                for line in f:
+                    dataList.append(list(map(eval, line.strip().split(','))))
+                dataList = list(zip(*dataList))
+                for i, name in enumerate(total_names):
+                    if i < 6:
+                        mpu_dist[name]['times'] = dataList[0]
+                        mpu_dist[name]['values'] = dataList[i+1]
+                    if i > 5 and i < 8:
+                        gas_dist[name]['times'] = dataList[0]
+                        gas_dist[name]['values'] = dataList[i+1]
+                    if i > 7:
+                        thp_dist[name]['times'] = dataList[0]
+                        thp_dist[name]['values'] = dataList[i+1]
+
+                self.RegionPlot.load_mpu_history(mpu_dist)
+                self.RegionPlot.load_gas_history(gas_dist)
+                self.RegionPlot.load_thp_history(thp_dist)
+
+            # # # Assuming CSV; for SQLite, use sqlite3 to query data.
+            # # data = pd.read_csv(file_path)
+            # # # Emit the data to the plot area signal (for future connection to plotting)
+            # # self.data_loaded.emit(data)
+            # # # For now, just print or handle; user can connect signal to plot function.
+            # # print(f"Data loaded from {file_path}:")
+            # # print(data.head())  # Placeholder action; replace with actual plotting in subclass or extension.
+            
+            # # If using SQLite instead:
+            # import sqlite3
+            # conn = sqlite3.connect(file_path)
+            # #data = pd.read_sql_query("SELECT * FROM your_table", conn)  # Adjust query
+            # conn.close()
+            
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to load data: {str(e)}")
         
 
 class SettingsPage(QWidget):
@@ -401,7 +508,7 @@ class SettingsPage(QWidget):
         self.pathLineEdit = QLineEdit()
         self.pathLineEdit.setText(f"{nowDir}\\history")
         self.browserFileBtn = QPushButton()
-        self.browserFileBtn.setText("浏览")
+        self.browserFileBtn.setText("浏览...")
         self.browserFileBtn.clicked.connect(self.select_folder)
         self.pathBtn = QPushButton()
         self.pathBtn.setText("设置")

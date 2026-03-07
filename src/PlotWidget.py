@@ -73,10 +73,8 @@ class SensorPlotter(QMainWindow):
         self.max_points = 1000
 
     def _update_plot(self, data_dict, curve, x_list, y_list, value):
-        if self.relative_time:
-            current_time = time.time() - self.start_time
-        else:
-            current_time = time.time()
+        current_time = time.time() - self.start_time
+        self.use_relative_time_axis()
         x_list.append(current_time)
         y_list.append(value)
         if len(x_list) > self.max_points:
@@ -133,6 +131,15 @@ class SensorPlotter(QMainWindow):
         history_data should be a dict like {'AX': {'times': [t1, t2, ...], 'values': [v1, v2, ...]}, ...}
         """
         self.relative_time = False
+
+        # 为所有 MPU plot 设置日期时间轴（只需设置一次）
+        for name in self.mpu_plots:
+            plot_widget = self.mpu_plots[name]
+            # 替换默认的 AxisItem 为 DateAxisItem
+            plot_widget.setAxisItems({'bottom': pg.DateAxisItem(orientation='bottom')})
+            # 可选：调整显示格式（默认已经比较友好）
+            # plot_widget.getAxis('bottom').setLabel(text='时间')
+
         for name in self.mpu_data:
             if name in history_data:
                 times = history_data[name]['times']
@@ -148,6 +155,12 @@ class SensorPlotter(QMainWindow):
         history_data should be a dict like {'CO2': {'times': [t1, t2, ...], 'values': [v1, v2, ...]}, ...}
         """
         self.relative_time = False
+        
+        # 为所有 Gas plot 设置日期时间轴（只需设置一次）
+        for name in self.gas_plots:
+            plot_widget = self.gas_plots[name]
+            plot_widget.setAxisItems({'bottom': pg.DateAxisItem(orientation='bottom')})
+
         for name in self.gas_data:
             if name in history_data:
                 times = history_data[name]['times']
@@ -163,6 +176,12 @@ class SensorPlotter(QMainWindow):
         history_data should be a dict like {'温度': {'times': [t1, t2, ...], 'values': [v1, v2, ...]}, ...}
         """
         self.relative_time = False
+
+        # 为所有 THP plot 设置日期时间轴（只需设置一次）
+        for name in self.thp_plots:
+            plot_widget = self.thp_plots[name]
+            plot_widget.setAxisItems({'bottom': pg.DateAxisItem(orientation='bottom')})
+
         for name in self.thp_data:
             if name in history_data:
                 times = history_data[name]['times']
@@ -171,6 +190,13 @@ class SensorPlotter(QMainWindow):
                     self.thp_data[name]['x'] = times
                     self.thp_data[name]['y'] = values
                     self.thp_curves[name].setData(times, values)
+
+    def use_relative_time_axis(self):
+        self.relative_time = True
+        for plots in [self.mpu_plots, self.gas_plots, self.thp_plots]:
+            for pw in plots.values():
+                pw.setAxisItems({'bottom': pg.AxisItem(orientation='bottom')})
+                pw.setLabel('bottom', 'Time (s)')
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
