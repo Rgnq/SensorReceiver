@@ -10,5 +10,5 @@ history/
 # Virtual environments
 .venv
 
-#vscode
-.vscode
+# vscode
+.vscode/
