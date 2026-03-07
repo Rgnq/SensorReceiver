@@ -42,8 +42,8 @@ class SerialThread(QThread):
                     if line:
                         self.data_signal.emit(line)
                 ##模拟
-                self.data_signal.emit(f"{random.uniform(-1, 1)},{random.uniform(-1, 1)},{random.uniform(-1, 1)},{random.uniform(-100, 100)},{random.uniform(-100, 100)},{random.uniform(-100, 100)},{random.uniform(400, 1000)},{random.uniform(0, 500)},{random.uniform(20, 30)},{random.uniform(40, 60)},{random.uniform(900, 1100)}")
-                time.sleep(1)
+                #self.data_signal.emit(f"{random.uniform(-1, 1)},{random.uniform(-1, 1)},{random.uniform(-1, 1)},{random.uniform(-100, 100)},{random.uniform(-100, 100)},{random.uniform(-100, 100)},{random.uniform(400, 1000)},{random.uniform(0, 500)},{random.uniform(20, 30)},{random.uniform(40, 60)},{random.uniform(900, 1100)}")
+                #time.sleep(1)
             except Exception as e:
                 self.status_signal.emit(f"错误:{e}")
 

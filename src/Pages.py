@@ -137,7 +137,7 @@ class Homepage(QWidget):
             self.RegionPlot.update_thp(self.THP_Data)
             if self.right_vertical.autoSaveStatus:
                 if self.runtimeSave is None:
-                    path = f"history/localsave_{round(self.RegionPlot.start_time)}"
+                    path = f"history/localsave_{time.strftime("%G_%m_%d_%H_%M_%S")}"
                     os.makedirs(os.path.dirname(path), exist_ok=True)
                     self.runtimeSave = open(path,'a+',encoding='utf-8')
                 if self.runtimeSave:
