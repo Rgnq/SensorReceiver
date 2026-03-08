@@ -6,6 +6,7 @@ import random
 class SerialThread(QThread):
     data_signal = Signal(str)  # 定义一个信号，用于发送数据到主线程
     status_signal = Signal(str)
+    stop_signal = Signal()
 
     def __init__(self, port, baudrate=9600, timeout=1):
         super().__init__()
@@ -33,6 +34,7 @@ class SerialThread(QThread):
                     errorTimes += 1
                     if errorTimes > 5:
                         self.status_signal.emit(f"请断开后重新设置")
+                        self.stop_signal.emit()
                         self.stop()
                     time.sleep(1)
                     continue

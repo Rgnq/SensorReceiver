@@ -354,6 +354,7 @@ class CommandPanel(QWidget):
             self.serThread = SerialThread(currentPort,baudrate,timeout=1)
             self.serThread.data_signal.connect(self.serDataSignal.emit)
             self.serThread.status_signal.connect(self.serLogSignal.emit)
+            self.serThread.stop_signal.connect(self.stopSerialThread)
             self.serThread.start()
             self.serState = True
         except Exception as e:
