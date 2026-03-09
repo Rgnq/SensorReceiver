@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
-                            QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox)
-from PySide6.QtCore import Qt, QPropertyAnimation, Signal
+                            QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox,
+                            QCalendarWidget, QDialog, QStyle)
+from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDate
 from serial.tools import list_ports
 from Serial import SerialThread
 from PlotWidget import SensorPlotter
@@ -295,7 +296,7 @@ class CommandPanel(QWidget):
         self.initUI()
 
     def initUI(self):
-        layout = QGridLayout(self)
+        self.gridlayout = QGridLayout(self)
 
         self.selectPortComboBox = QComboBox()
         self.refreshPortsButton = QPushButton("刷新")
@@ -305,29 +306,29 @@ class CommandPanel(QWidget):
         self.autosaveIntervalLineEdit = QLineEdit()
         self.autosaveIntervalButton = QPushButton("设置")
 
-        layout.addWidget(QLabel("选择端口"), 0, 0)
-        layout.addWidget(self.refreshPortsButton, 0, 1)
-        layout.addWidget(self.selectPortComboBox, 1, 0)
-        layout.addWidget(self.connectButton, 1, 1)
+        self.gridlayout.addWidget(QLabel("选择端口"), 0, 0)
+        self.gridlayout.addWidget(self.refreshPortsButton, 0, 1)
+        self.gridlayout.addWidget(self.selectPortComboBox, 1, 0)
+        self.gridlayout.addWidget(self.connectButton, 1, 1)
         self.FillcomboxPorts()  # 初始化时填充可用串口列表
         self.refreshPortsButton.clicked.connect(self.FillcomboxPorts)  # 刷新按钮连接槽函数
         self.connectButton.clicked.connect(self.toggleSerialIO)
 
-        layout.addWidget(QLabel("波特率"), 2, 0)
-        layout.addWidget(self.BaudrateLineEdit, 3, 0)
+        self.gridlayout.addWidget(QLabel("波特率"), 2, 0)
+        self.gridlayout.addWidget(self.BaudrateLineEdit, 3, 0)
         self.BaudrateLineEdit.setText("9600")  # 默认波特率
 
-        layout.addWidget(QLabel("自动保存"), 4, 0)
-        layout.addWidget(self.autosaveCheckBox, 4, 1)
+        self.gridlayout.addWidget(QLabel("自动保存"), 4, 0)
+        self.gridlayout.addWidget(self.autosaveCheckBox, 4, 1)
         # layout.addWidget(self.autosaveIntervalLineEdit, 5, 0)
         # layout.addWidget(self.autosaveIntervalButton, 5, 1)
         self.autosaveCheckBox.setChecked(True)  # 默认启用自动保存
         # self.autosaveIntervalLineEdit.setText("60")  # 默认自动保存间隔
 
-        layout.setColumnStretch(0, 4)
-        layout.setColumnStretch(1, 0)
-        layout.setColumnStretch(2, 1)
-        layout.setRowStretch(6, 1)  # 添加伸缩项，推送内容到顶部
+        self.gridlayout.setColumnStretch(0, 4)
+        self.gridlayout.setColumnStretch(1, 0)
+        self.gridlayout.setColumnStretch(2, 0)
+        self.gridlayout.setRowStretch(5, 1)  # 添加伸缩项，推送内容到顶部
 
     def FillcomboxPorts(self):
         self.selectPortComboBox.clear()
@@ -372,8 +373,28 @@ class CommandPanel(QWidget):
 
 
 class HistoryPage(QWidget):
+    errorSignal = Signal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        self.msg = QMessageBox()
+        self.msg.setOption(QMessageBox.DontUseNativeDialog, True)
+        self.msg.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
+
+        self.dialog = QFileDialog()
+        self.dialog.setWindowTitle("请选择文件夹")
+        self.dialog.setFileMode(QFileDialog.FileMode.Directory)
+        self.dialog.setStyleSheet('''
+                    * {
+                        padding: 0px;
+                        border: 0px;
+                        margin: 0px;
+                        }    
+                    ''')
+        self.dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        self.dialog.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
+        
         self.initUI()
     
     def initUI(self):
@@ -394,6 +415,27 @@ class HistoryPage(QWidget):
         top_layout.addWidget(self.pathBtnConfirm)
         main_layout.addLayout(top_layout)
 
+        date_layout = QHBoxLayout()
+        self.calendarButton = QPushButton()
+        self.calendarButton.setText("选择日期")
+        self.calendarButton.clicked.connect(self.show_date_picker)
+        self.DateLabel = QLineEdit()
+        self.DateLabel.setReadOnly(True)
+        self.DateLabel.setText(QDate.currentDate().toString(Qt.DateFormat.ISODate))
+        # self.YearDate = QComboBox()
+        # self.MonthDate = QComboBox()
+        # self.DayDate = QComboBox()
+
+        self.DateCheck = QCheckBox()
+        self.DateCheck.setText("启用")
+        date_layout.addWidget(self.calendarButton)
+        date_layout.addWidget(self.DateLabel,1)
+        # date_layout.addWidget(self.YearDate,1)
+        # date_layout.addWidget(self.MonthDate,1)
+        # date_layout.addWidget(self.DayDate,1)
+        date_layout.addWidget(self.DateCheck)
+        main_layout.addLayout(date_layout)
+
         self.tabWidget = QTabWidget()
         main_layout.addWidget(self.tabWidget)
         
@@ -412,29 +454,84 @@ class HistoryPage(QWidget):
         self.RegionPlot = SensorPlotter()
         main_layout.addWidget(self.RegionPlot,1)
 
+    # def select_folder(self):
+    #     dialog = QFileDialog()
+    #     dialog.setWindowTitle("请选择文件夹")
+    #     dialog.setFileMode(QFileDialog.FileMode.Directory)
+    #     dialog.setStyleSheet('''
+    #                 * {
+    #                     padding: 0px;
+    #                     border: 0px;
+    #                     margin: 0px;
+    #                     }    
+    #                 ''')
+    #     dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+    #     dialog.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
+
+    #     if self.pathSaveLineEdit.text():
+    #         dialog.setDirectory(self.pathSaveLineEdit.text())
+    #     else:
+    #         dialog.setDirectory(os.getcwd())
+
+    #     if dialog.exec():
+    #         self.pathSaveLineEdit.setText(dialog.selectedFiles()[0])
+
     def select_folder(self):
+        last_path = self.pathSaveLineEdit.text() if self.pathSaveLineEdit.text() else os.getcwd()
         # 弹出文件夹选择对话框
         folder_path = QFileDialog.getExistingDirectory(
-            self,                    # 父窗口
+            self.dialog,                    # 父窗口
             "请选择文件夹",           # 标题
-            self.pathSaveLineEdit.text()    # 默认打开的路径
+            last_path,    # 默认打开的路径（上一次选择的路径）
+            QFileDialog.DontUseNativeDialog
         )
 
         if folder_path:
             self.pathSaveLineEdit.setText(folder_path)
+
+    def show_date_picker(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("选择日期")
+        dialog.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
+        dialog.setModal(True)
+        
+        calendar = QCalendarWidget()
+        calendar.setGridVisible(True)
+        # 可选：默认选中今天
+        calendar.setSelectedDate(QDate.currentDate())
+        
+        ok_btn = QPushButton("确定")
+        ok_btn.clicked.connect(lambda: self.on_date_selected(calendar, dialog))
+        
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(calendar)
+        layout.addWidget(ok_btn)
+        
+        dialog.resize(320, 280)
+        dialog.exec()
+    
+    def on_date_selected(self, calendar, dialog):
+        date = calendar.selectedDate()
+        date_str = date.toString("yyyy-MM-dd")
+        self.DateLabel.setText(date_str)
+        dialog.accept()
     
     def load_files(self):
+        data_files = []
         self.directory = self.pathSaveLineEdit.text().strip()
         if not os.path.isdir(self.directory):
-            QMessageBox.warning(self, "Error", "无效目录路径")
+            self.msg.warning(self.msg, "Error", "无效目录路径")
             return
 
         self.localListWidget.clear()
         files = [f for f in os.listdir(self.directory) if os.path.isfile(os.path.join(self.directory, f))]
         # Filter for data files, e.g., .csv or .db; assuming .csv for now.
         data_files = [f for f in files if f.endswith('.csv')]  # Change to '.db' for SQLite
+        if self.DateCheck.isChecked():
+            date = '_'.join(self.DateLabel.text().split("-"))
+            data_files[:] = [f for f in data_files if f.startswith("localsave_") and f[10:20] == date]
         if not data_files:
-            QMessageBox.information(self, "Info", "无数据记录")
+            self.msg.information(self.msg, "Info", "无数据记录")
             return
 
         self.localListWidget.addItems(data_files)
@@ -442,7 +539,7 @@ class HistoryPage(QWidget):
     def plotData(self):
         selected_items = self.localListWidget.selectedItems()
         if not selected_items:
-            QMessageBox.warning(self, "Info", "未选中数据记录")
+            self.msg.information(self.msg, "Info", "未选中数据")
             return
 
         selected_file = selected_items[0].text()
@@ -474,30 +571,29 @@ class HistoryPage(QWidget):
                 self.RegionPlot.load_mpu_history(mpu_dist)
                 self.RegionPlot.load_gas_history(gas_dist)
                 self.RegionPlot.load_thp_history(thp_dist)
-
-            # # # Assuming CSV; for SQLite, use sqlite3 to query data.
-            # # data = pd.read_csv(file_path)
-            # # # Emit the data to the plot area signal (for future connection to plotting)
-            # # self.data_loaded.emit(data)
-            # # # For now, just print or handle; user can connect signal to plot function.
-            # # print(f"Data loaded from {file_path}:")
-            # # print(data.head())  # Placeholder action; replace with actual plotting in subclass or extension.
-            
-            # # If using SQLite instead:
-            # import sqlite3
-            # conn = sqlite3.connect(file_path)
-            # #data = pd.read_sql_query("SELECT * FROM your_table", conn)  # Adjust query
-            # conn.close()
             
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to load data: {str(e)}")
-        
+            self.msg.warning(self.msg, "Error", f"Failed to load data: {str(e)}")
+ 
 
 class SettingsPage(QWidget):
     pathSaveSignal = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        self.dialog = QFileDialog()
+        self.dialog.setWindowTitle("请选择文件夹")
+        self.dialog.setFileMode(QFileDialog.FileMode.Directory)
+        self.dialog.setStyleSheet('''
+                    * {
+                        padding: 0px;
+                        border: 0px;
+                        margin: 0px;
+                        }    
+                    ''')
+        self.dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        self.dialog.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
         
         self.initUI()
 
@@ -527,17 +623,18 @@ class SettingsPage(QWidget):
         self.pathSaveSignal.emit(directory)
     
     def select_folder(self):
+        last_path = self.pathLineEdit.text() if self.pathLineEdit.text() else os.getcwd()
         # 弹出文件夹选择对话框
         folder_path = QFileDialog.getExistingDirectory(
-            self,                    # 父窗口
+            self.dialog,                    # 父窗口
             "请选择文件夹",           # 标题
-            self.pathLineEdit.text()    # 默认打开的路径（上一次选择的路径）
+            last_path,    # 默认打开的路径（上一次选择的路径）
+            QFileDialog.DontUseNativeDialog
         )
 
         if folder_path:
             self.pathLineEdit.setText(folder_path)
             self.on_pathBtn_click()
-
         
 class AnalysisPage(QWidget):
     def __init__(self, parent=None):
@@ -568,17 +665,25 @@ class LogPage(QWidget):
         self.LogLevelToggleBtn.setToolTip("切换日志过滤等级")
         self.LogLevelToggleBtn.clicked.connect(self.on_LogBtn_click)
 
+        self.clearBtn = QPushButton()
+        self.clearBtn.setText("清空")
+        self.clearBtn.clicked.connect(self.clearText)
+
         self.textedit = QTextEdit()
         self.textedit.setReadOnly(True)
         self.textedit.textChanged.connect(self.textedit.ensureCursorVisible)
 
         layout.addWidget(self.LogLevelLabel)
         layout.addWidget(self.LogLevelToggleBtn)
+        layout.addWidget(self.clearBtn)
         layout.addWidget(self.textedit,1)
     
     def on_LogBtn_click(self):
         self.LogLevel = (self.LogLevel + 1) % 3
         self.LogLevelLabel.setText(f'日志报告等级：{self.levelNames[self.LogLevel]}')
+
+    def clearText(self):
+        self.textedit.clear()
 
     def append_log(self, log: str, level: int):
         if level <= self.LogLevel:

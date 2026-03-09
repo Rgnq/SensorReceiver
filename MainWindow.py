@@ -1,7 +1,7 @@
 
-from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QSizePolicy, QHBoxLayout, QVBoxLayout, QSpacerItem , QStyle
+from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QSizePolicy, QHBoxLayout, QVBoxLayout, QSpacerItem , QStyle, QTextEdit
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QTextCursor
 from Sidebar import Sidebar
 from Menubar import Menubar
 from Pages import Homepage, HistoryPage, SettingsPage, AnalysisPage, LogPage
@@ -18,6 +18,7 @@ class MainWindow(QMainWindow):
         self.Homepage.right_vertical.serDataSignal.connect(self.LogInfo)
         self.Homepage.right_vertical.serLogSignal.connect(self.LogError)
         self.SettingsPage.pathSaveSignal.connect(self.setSavePath)
+        self.LogPage.textedit.textChanged.connect(self.syncLog)
     
     def initUI(self):
         self.initPages()
@@ -92,6 +93,10 @@ class MainWindow(QMainWindow):
             "数据分析": self.AnalysisPage,
             "日志": self.LogPage
         }
+        self.TextCopy = QTextEdit()
+        self.TextCopy.setReadOnly(True)
+        self.Homepage.right_vertical.gridlayout.addWidget(self.TextCopy,5,0)
+
 
     def setSidebarGeometry(self):
         menubar_h = self.menubar.height()
@@ -109,6 +114,11 @@ class MainWindow(QMainWindow):
 
     def LogInfo(self,text):
         self.LogPage.append_log(f'{text}',2)
+
+    def syncLog(self):
+        self.TextCopy.setText(self.LogPage.textedit.toPlainText())
+        self.TextCopy.moveCursor(QTextCursor.End)
+        self.TextCopy.ensureCursorVisible()
 
     def setSavePath(self,path):
         self.Homepage.pathSave = path
