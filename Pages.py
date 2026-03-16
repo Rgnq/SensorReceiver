@@ -705,7 +705,7 @@ class AnalysisTab(QWidget):
         if dataList:
             data_mean = list(map(lambda x: "{:.2f}".format(sum(x)/len(x)), dataList))
             data_median = list(map(lambda x: "{:.2f}".format((x[len(x)//2-1]+x[len(x)//2])/2) if len(x)%2==0 else "{:.2f}".format(x[(len(x)-1)//2]),list(map(sorted, dataList))))
-            data_std = list(map(lambda mean,data: "{:.2f}".format((sum((x-eval(mean))**2 for x in data)/len(data))), data_mean, dataList))
+            data_std = list(map(lambda mean,data: "{:.2f}".format((sum((x-eval(mean))**2 for x in data)/len(data))**(1/2)), data_mean, dataList))
             data_list = [data_mean,data_median,data_std]
             for column,value in enumerate(data_list):
                 for row,data in enumerate(value):
