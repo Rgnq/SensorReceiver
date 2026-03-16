@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication, QTextCursor
 from Sidebar import Sidebar
 from Menubar import Menubar
-from Pages import Homepage, HistoryPage, SettingsPage, AnalysisPage, LogPage
+from Pages import Homepage, HistoryPage, SettingsPage, LogPage
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -17,8 +17,8 @@ class MainWindow(QMainWindow):
         self.Homepage.sendErrorSignal.connect(self.LogError)
         self.Homepage.right_vertical.serDataSignal.connect(self.LogInfo)
         self.Homepage.right_vertical.serLogSignal.connect(self.LogError)
-        self.SettingsPage.pathSaveSignal.connect(self.setSavePath)
         self.LogPage.textedit.textChanged.connect(self.syncLog)
+        self.SettingsPage.pathSaveSignal.connect(self.setSavePath)
     
     def initUI(self):
         self.initPages()
@@ -73,25 +73,22 @@ class MainWindow(QMainWindow):
         content_layout.addWidget(self.stacked_widget,1)
 
     def initPages(self):
-        self.pages_names = ["实时数据", "历史记录","设置", "数据分析", "日志"]
+        self.pages_names = ["实时数据", "历史记录", "日志", "设置"]
         self.pages_icons = {
             "实时数据": self.style().standardIcon(QStyle.SP_FileDialogDetailedView),
             "历史记录": self.style().standardIcon(QStyle.SP_DirHomeIcon),
-            "设置": self.style().standardIcon(QStyle.SP_MessageBoxInformation),
-            "数据分析": self.style().standardIcon(QStyle.SP_ComputerIcon),
-            "日志": self.style().standardIcon(QStyle.SP_TrashIcon)
+            "日志": self.style().standardIcon(QStyle.SP_TrashIcon),
+            "设置": self.style().standardIcon(QStyle.SP_MessageBoxInformation)
         }
         self.Homepage = Homepage()
         self.HistoryPage = HistoryPage()
         self.SettingsPage = SettingsPage()
-        self.AnalysisPage = AnalysisPage()
         self.LogPage = LogPage()
         self.pages = {
             "实时数据": self.Homepage,
             "历史记录": self.HistoryPage,
-            "设置": self.SettingsPage,
-            "数据分析": self.AnalysisPage,
-            "日志": self.LogPage
+            "日志": self.LogPage,
+            "设置": self.SettingsPage
         }
         self.TextCopy = QTextEdit()
         self.TextCopy.setReadOnly(True)

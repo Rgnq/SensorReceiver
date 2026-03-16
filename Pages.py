@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
+from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QTableWidget, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
                             QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox,
-                            QCalendarWidget, QDialog, QStyle)
+                            QCalendarWidget, QDialog, QStyle, QTableWidgetItem)
 from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDate
 from serial.tools import list_ports
 from Serial import SerialThread
@@ -26,6 +26,8 @@ class Homepage(QWidget):
         self.TEMP_label = QLabel("......")
         self.HUM_label = QLabel("......")
         self.PRESS_label = QLabel("......")
+
+        self.dataBuffer = []
 
         self.labels = [self.AX_label, self.AY_label, self.AZ_label, self.GX_label, self.GY_label, self.GZ_label,
                         self.CO2_label, self.TVOC_label,
@@ -79,11 +81,17 @@ class Homepage(QWidget):
         self.left_content.addLayout(self.sensor_horizontal)
 
         # 左侧监测部分--下方留白
+        self.lowTab = QTabWidget()
+        self.lowTab.setStyleSheet("* {border-radius: 0px;}")
         self.RegionPlot = SensorPlotter()
+        self.lowTab.addTab(self.RegionPlot,"图像")
+        self.DataAnalysis = AnalysisTab()
+        self.lowTab.addTab(self.DataAnalysis,"统计")
         # self.left_content.addSpacerItem(
         #     QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         # )
-        self.left_content.addWidget(self.RegionPlot)
+
+        self.left_content.addWidget(self.lowTab)
         self.left_content.setStretch(0, 2)
         self.left_content.setStretch(1, 3)
 
@@ -114,6 +122,7 @@ class Homepage(QWidget):
         # 工具按钮
         self.toolButton = QToolButton(self)
         self.toolButton.setObjectName("toolButton")
+        self.toolButton.setStyleSheet("* {background-color: #404040}")
         self.toolButton.setArrowType(Qt.DownArrow)
         sp = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self.toolButton.setSizePolicy(sp)
@@ -137,8 +146,9 @@ class Homepage(QWidget):
 
     def updateDataDisplay(self,dataText:str):
         try:
-            dataList = dataText.strip("\n").split(",")
+            dataList = dataText.strip().split(",")
             dataListInt = list(map(eval, dataList))
+            dataList = list(map(lambda x: "{:.2f}".format(x),dataListInt))
             for i, data in enumerate(dataList):
                 self.labels[i].setText(data)
             self.MPU6050_Data = dict(zip(self.dataNames[0:6],dataListInt[0:6]))
@@ -154,11 +164,16 @@ class Homepage(QWidget):
                     os.makedirs(os.path.dirname(path), exist_ok=True)
                     self.runtimeSave = open(path,'a+',encoding='utf-8')
                 if self.runtimeSave:
-                    self.runtimeSave.write(f"{time.time()},"+dataText+"\n")
+                    self.runtimeSave.write(f"{time.time()},"+','.join(dataList)+"\n")
+            self.dataBuffer.append(dataListInt)
+            self.dataBuffer = list(zip(*self.dataBuffer))
+            self.DataAnalysis.analysisData(self.dataBuffer)
         except Exception as e:
             self.right_vertical.serLogSignal.emit(f"错误：{e}")
     
     def clearData(self):
+        self.dataBuffer = []
+        self.DataAnalysis.analysisData(self.dataBuffer)
         for label in self.labels:
             label.setText(". . .")
         self.RegionPlot.reset()
@@ -444,7 +459,15 @@ class HistoryPage(QWidget):
         localHistory_tab.setLayout(localHistory_layout)
         self.localListWidget = QListWidget()
         localHistory_layout.addWidget(self.localListWidget)
-        self.tabWidget.addTab(localHistory_tab,"实时数据记录")
+        self.tabWidget.addTab(localHistory_tab,"选择数据")
+
+        self.DataPreview_tab = QTableWidget()
+        self.DataPreview_tab.setStyleSheet("* {border-radius: 0px;}")
+        self.tabWidget.addTab(self.DataPreview_tab,"预览数据")
+
+        self.DataAnalysis = AnalysisTab()
+        self.DataAnalysis.setStyleSheet("* {border-radius: 0px;}")
+        self.tabWidget.addTab(self.DataAnalysis,"统计")
         
         self.plotBtn = QPushButton()
         self.plotBtn.setText("绘制图像")
@@ -452,6 +475,7 @@ class HistoryPage(QWidget):
         main_layout.addWidget(self.plotBtn)
 
         self.RegionPlot = SensorPlotter()
+        self.RegionPlot.setStyleSheet("* {border-radius: 0px;}")
         main_layout.addWidget(self.RegionPlot,1)
 
     # def select_folder(self):
@@ -571,6 +595,24 @@ class HistoryPage(QWidget):
                 self.RegionPlot.load_mpu_history(mpu_dist)
                 self.RegionPlot.load_gas_history(gas_dist)
                 self.RegionPlot.load_thp_history(thp_dist)
+
+                space = 10
+                self.DataPreview_tab.setRowCount(len(dataList[0])+space)
+                self.DataPreview_tab.setColumnCount(len(dataList)+space)
+                self.DataPreview_tab.setHorizontalHeaderLabels(['时间',*total_names,*['' for x in range(space)]])
+
+                previewDataList = [list(map(str,x)) for x in dataList]
+                previewDataList[0] = list(map(lambda x:time.strftime("%Y-%m-%d %H:%M:%S",x), map(time.localtime,map(eval,previewDataList[0]))))
+
+                for column in range(len(previewDataList)):
+                    for row in range(len(previewDataList[column])):
+                        self.DataPreview_tab.setItem(row,column,QTableWidgetItem(previewDataList[column][row]))
+
+                self.DataPreview_tab.resizeColumnsToContents()
+
+                analysisDataList = dataList.copy()
+                analysisDataList.pop(0)
+                self.DataAnalysis.analysisData(analysisDataList)
             
         except Exception as e:
             self.msg.warning(self.msg, "Error", f"Failed to load data: {str(e)}")
@@ -636,16 +678,44 @@ class SettingsPage(QWidget):
             self.pathLineEdit.setText(folder_path)
             self.on_pathBtn_click()
         
-class AnalysisPage(QWidget):
+class AnalysisTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.initUI()
 
     def initUI(self):
-        layout = QVBoxLayout(self)
-        label = QLabel("未实现")
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
+        self.main_layout = QVBoxLayout(self)
+
+        dataNames = ["AX","AY","AZ","GX","GY","GZ","CO2","TVOC","温度","湿度","压强"]
+        valueNames = ['平均值','中位数','标准差']
+        self.dataTable = QTableWidget()
+        self.dataTable.setRowCount(30)
+        self.dataTable.setColumnCount(30)
+        self.dataTable.setHorizontalHeaderLabels([*valueNames,*['' for i in range(27)]])
+        self.dataTable.setVerticalHeaderLabels([*dataNames,*['' for i in range(19)]])
+        self.dataTable.resizeColumnsToContents()
+        self.dataTable.setEditTriggers(self.dataTable.editTriggers().NoEditTriggers)
+        self.main_layout.addWidget(self.dataTable)
+
+    # def updateCurrent(self,dataList):
+    #     for i,data in enumerate(dataList):
+    #             self.currentTable.setItem(i,1,QTableWidgetItem(str(data)))
+
+    def analysisData(self,dataList):
+        if dataList:
+            data_mean = list(map(lambda x: "{:.2f}".format(sum(x)/len(x)), dataList))
+            data_median = list(map(lambda x: "{:.2f}".format((x[len(x)//2-1]+x[len(x)//2])/2) if len(x)%2==0 else "{:.2f}".format(x[(len(x)-1)//2]),list(map(sorted, dataList))))
+            data_std = list(map(lambda mean,data: "{:.2f}".format((sum((x-eval(mean))**2 for x in data)/len(data))), data_mean, dataList))
+            data_list = [data_mean,data_median,data_std]
+            for column,value in enumerate(data_list):
+                for row,data in enumerate(value):
+                    self.dataTable.setItem(row,column,QTableWidgetItem(data))
+        else:
+            self.dataTable.clearContents()
+
+    # def analysisHistoryData(self,dataList):
+    #     dataList.pop(0)
+    #     data_average = list(map(lambda x: sum(x)/len(x), dataList))
 
 class LogPage(QWidget):
     def __init__(self, parent=None):
