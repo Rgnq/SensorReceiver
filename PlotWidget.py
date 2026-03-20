@@ -1,6 +1,5 @@
-import sys
 import time
-from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QGridLayout
+from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QGridLayout
 import pyqtgraph as pg
 
 class SensorPlotter(QMainWindow):
@@ -74,7 +73,8 @@ class SensorPlotter(QMainWindow):
 
     def _update_plot(self, data_dict, curve, x_list, y_list, value):
         current_time = time.time() - self.start_time
-        self.use_relative_time_axis()
+        if not self.relative_time:
+            self.use_relative_time_axis()
         x_list.append(current_time)
         y_list.append(value)
         if len(x_list) > self.max_points:
@@ -130,15 +130,16 @@ class SensorPlotter(QMainWindow):
         Load historical data for MPU6050 with absolute times.
         history_data should be a dict like {'AX': {'times': [t1, t2, ...], 'values': [v1, v2, ...]}, ...}
         """
-        self.relative_time = False
+        if self.relative_time:
+            self.relative_time = False
 
-        # 为所有 MPU plot 设置日期时间轴（只需设置一次）
-        for name in self.mpu_plots:
-            plot_widget = self.mpu_plots[name]
-            # 替换默认的 AxisItem 为 DateAxisItem
-            plot_widget.setAxisItems({'bottom': pg.DateAxisItem(orientation='bottom')})
-            # 可选：调整显示格式（默认已经比较友好）
-            # plot_widget.getAxis('bottom').setLabel(text='时间')
+            # 为所有 MPU plot 设置日期时间轴（只需设置一次）
+            for name in self.mpu_plots:
+                plot_widget = self.mpu_plots[name]
+                # 替换默认的 AxisItem 为 DateAxisItem
+                plot_widget.setAxisItems({'bottom': pg.DateAxisItem(orientation='bottom')})
+                # 可选：调整显示格式（默认已经比较友好）
+                # plot_widget.getAxis('bottom').setLabel(text='时间')
 
         for name in self.mpu_data:
             if name in history_data:
@@ -154,12 +155,13 @@ class SensorPlotter(QMainWindow):
         Load historical data for Gas Sensor with absolute times.
         history_data should be a dict like {'CO2': {'times': [t1, t2, ...], 'values': [v1, v2, ...]}, ...}
         """
-        self.relative_time = False
-        
-        # 为所有 Gas plot 设置日期时间轴（只需设置一次）
-        for name in self.gas_plots:
-            plot_widget = self.gas_plots[name]
-            plot_widget.setAxisItems({'bottom': pg.DateAxisItem(orientation='bottom')})
+        if self.relative_time:
+            self.relative_time = False
+            
+            # 为所有 Gas plot 设置日期时间轴（只需设置一次）
+            for name in self.gas_plots:
+                plot_widget = self.gas_plots[name]
+                plot_widget.setAxisItems({'bottom': pg.DateAxisItem(orientation='bottom')})
 
         for name in self.gas_data:
             if name in history_data:
@@ -175,12 +177,13 @@ class SensorPlotter(QMainWindow):
         Load historical data for Temp Hum Press Sensor with absolute times.
         history_data should be a dict like {'温度': {'times': [t1, t2, ...], 'values': [v1, v2, ...]}, ...}
         """
-        self.relative_time = False
+        if self.relative_time:
+            self.relative_time = False
 
-        # 为所有 THP plot 设置日期时间轴（只需设置一次）
-        for name in self.thp_plots:
-            plot_widget = self.thp_plots[name]
-            plot_widget.setAxisItems({'bottom': pg.DateAxisItem(orientation='bottom')})
+            # 为所有 THP plot 设置日期时间轴（只需设置一次）
+            for name in self.thp_plots:
+                plot_widget = self.thp_plots[name]
+                plot_widget.setAxisItems({'bottom': pg.DateAxisItem(orientation='bottom')})
 
         for name in self.thp_data:
             if name in history_data:
@@ -197,45 +200,3 @@ class SensorPlotter(QMainWindow):
             for pw in plots.values():
                 pw.setAxisItems({'bottom': pg.AxisItem(orientation='bottom')})
                 pw.setLabel('bottom', 'Time (s)')
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = SensorPlotter()
-    window.show()
-
-    # Example usage: Simulate data updates (in real scenario, connect to sensor data stream)
-    import random
-    from PySide6.QtCore import QTimer
-
-    timer = QTimer()
-    def simulate_update():
-        window.update_mpu({
-            'AX': random.uniform(-1, 1),
-            'AY': random.uniform(-1, 1),
-            'AZ': random.uniform(-1, 1),
-            'GX': random.uniform(-100, 100),
-            'GY': random.uniform(-100, 100),
-            'GZ': random.uniform(-100, 100)
-        })
-        window.update_gas({
-            'CO2': random.uniform(400, 1000),
-            'TVOC': random.uniform(0, 500)
-        })
-        window.update_thp({
-            '温度': random.uniform(20, 30),
-            '湿度': random.uniform(40, 60),
-            '压强': random.uniform(900, 1100)
-        })
-
-    timer.timeout.connect(simulate_update)
-    timer.start(1000)  # Update every second
-
-    # Example: Load historical data (commented out)
-    # import time
-    # historical_times = [time.time() - i for i in range(100, 0, -1)]
-    # window.load_mpu_history({
-    #     'AX': {'times': historical_times, 'values': [random.uniform(-1, 1) for _ in historical_times]},
-    #     # ... similarly for others
-    # })
-
-    sys.exit(app.exec())
