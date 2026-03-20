@@ -537,7 +537,7 @@ class HistoryPage(QWidget):
         layout.addWidget(calendar)
         layout.addWidget(ok_btn)
         
-        dialog.resize(320, 280)
+        dialog.resize(640, 280)
         dialog.exec()
     
     def on_date_selected(self, calendar, dialog):
