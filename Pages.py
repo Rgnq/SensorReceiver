@@ -147,12 +147,9 @@ class Homepage(QWidget):
     def updateDataDisplay(self,dataText:str):
         try:
             dataList = dataText.strip().split(",")
-            dataListInt = list(map(eval, dataList))
-            dataList = list(map(lambda x: "{:.2f}".format(x),dataListInt))
-            if len(dataList) != 11:
-                self.right_vertical.serLogSignal.emit(f"数据格式错误: 收到 {len(dataList)} 个字段")
-                return
-            for i, data in enumerate(dataList):
+            dataListInt = [float(x) for x in dataList]
+            dataListStr = ["{:.2f}".format(x) for x in dataListInt]
+            for i, data in enumerate(dataListStr):
                 self.labels[i].setText(data)
             self.MPU6050_Data = dict(zip(self.dataNames[0:6],dataListInt[0:6]))
             self.Gas_Data = dict(zip(self.dataNames[6:8],dataListInt[6:8]))
@@ -585,7 +582,8 @@ class HistoryPage(QWidget):
                 gas_dist = {'CO2':{'times':[],'values':[]},'TVOC':{'times':[],'values':[]}}
                 thp_dist = {'温度':{'times':[],'values':[]},'湿度':{'times':[],'values':[]},'压强':{'times':[],'values':[]}}
                 for line in f:
-                    dataList.append(list(map(eval, line.strip().split(','))))
+                    #dataList.append(list(map(eval, line.strip().split(','))))
+                    dataList.append([float(x) for x in line.strip().split(',')])
                 dataList = list(zip(*dataList))
                 for i, name in enumerate(total_names):
                     if i < 6:
@@ -607,8 +605,9 @@ class HistoryPage(QWidget):
                 self.DataPreview_tab.setColumnCount(len(dataList)+space)
                 self.DataPreview_tab.setHorizontalHeaderLabels(['时间',*total_names,*['' for x in range(space)]])
 
-                previewDataList = [list(map(str,x)) for x in dataList]
-                previewDataList[0] = list(map(lambda x:time.strftime("%Y-%m-%d %H:%M:%S",x), map(time.localtime,map(eval,previewDataList[0]))))
+                previewDataList = [[str(i) for i in x] for x in dataList]
+                #previewDataList[0] = list(map(lambda x:time.strftime("%Y-%m-%d %H:%M:%S",x), map(time.localtime,map(eval,previewDataList[0]))))
+                previewDataList[0] = [time.strftime("%Y-%m-%d %H:%M:%S",i) for i in [time.localtime(x) for x in dataList[0]]]
 
                 for column in range(len(previewDataList)):
                     for row in range(len(previewDataList[column])):
@@ -709,11 +708,15 @@ class AnalysisTab(QWidget):
 
     def analysisData(self,dataList):
         if dataList:
-            data_mean = list(map(lambda x: "{:.2f}".format(sum(x)/len(x)), dataList))
-            data_median = list(map(lambda x: "{:.2f}".format((x[len(x)//2-1]+x[len(x)//2])/2) if len(x)%2==0 else "{:.2f}".format(x[(len(x)-1)//2]),list(map(sorted, dataList))))
-            data_std = list(map(lambda mean,data: "{:.2f}".format((sum((x-eval(mean))**2 for x in data)/len(data))**(1/2)), data_mean, dataList))
-            data_list = [data_mean,data_median,data_std]
-            for column,value in enumerate(data_list):
+            #data_mean = list(map(lambda x: "{:.2f}".format(sum(x)/len(x)), dataList))
+            data_mean = ["{:.2f}".format(sum(x)/len(x)) for x in dataList]
+            #data_median = list(map(lambda x: "{:.2f}".format((x[len(x)//2-1]+x[len(x)//2])/2) if len(x)%2==0 else "{:.2f}".format(x[(len(x)-1)//2]),list(map(sorted, dataList))))
+            dataListSort = [sorted(data) for data in dataList]
+            data_median = ['{:.2f}'.format((x[len(x)//2-1]+x[len(x)//2])/2) if len(x)%2==0 else '{:.2f}'.format(x[(len(x)-1)//2]) for x in dataListSort]
+            #data_std = list(map(lambda mean,data: "{:.2f}".format((sum((x-eval(mean))**2 for x in data)/len(data))**(1/2)), data_mean, dataList))
+            data_std = ["{:.2f}".format((sum([(x-float(mean))**2 for x in data])/len(data))**(1/2)) for mean,data in zip(data_mean,dataList)]
+            data_result = [data_mean,data_median,data_std]
+            for column,value in enumerate(data_result):
                 for row,data in enumerate(value):
                     self.dataTable.setItem(row,column,QTableWidgetItem(data))
         else:
