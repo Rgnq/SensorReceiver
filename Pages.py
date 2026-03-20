@@ -149,6 +149,9 @@ class Homepage(QWidget):
             dataList = dataText.strip().split(",")
             dataListInt = list(map(eval, dataList))
             dataList = list(map(lambda x: "{:.2f}".format(x),dataListInt))
+            if len(dataList) != 11:
+                self.right_vertical.serLogSignal.emit(f"数据格式错误: 收到 {len(dataList)} 个字段")
+                return
             for i, data in enumerate(dataList):
                 self.labels[i].setText(data)
             self.MPU6050_Data = dict(zip(self.dataNames[0:6],dataListInt[0:6]))
@@ -166,8 +169,11 @@ class Homepage(QWidget):
                 if self.runtimeSave:
                     self.runtimeSave.write(f"{time.time()},"+','.join(dataList)+"\n")
             self.dataBuffer.append(dataListInt)
-            self.dataBuffer = list(zip(*self.dataBuffer))
-            self.DataAnalysis.analysisData(self.dataBuffer)
+            if len(self.dataBuffer) > 10000:
+                self.dataBuffer.pop(0)
+            if self.dataBuffer:
+                transposed = list(zip(*self.dataBuffer))
+                self.DataAnalysis.analysisData(transposed)
         except Exception as e:
             self.right_vertical.serLogSignal.emit(f"错误：{e}")
     

@@ -7,7 +7,7 @@ from MainWindow import MainWindow
 
 def main():
     app = QApplication(sys.argv)
-    apply_stylesheet(app, theme='dark_teal.xml',invert_secondary=True)
+    apply_stylesheet(app, theme='dark_amber.xml',invert_secondary=False)
     w = MainWindow()
     w.show()
     app.exec()
