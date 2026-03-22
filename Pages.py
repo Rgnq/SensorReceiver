@@ -41,7 +41,7 @@ class Homepage(QWidget):
         self.pathSave = "history"
 
         for label in self.labels:
-            label.setStyleSheet("background-color: rgba(80,80,80,127)")
+            label.setStyleSheet("background-color: rgba(80,80,100,127)")
 
         self.anim = None  # 用于存储动画对象
         self.settingExpanded = False  # 记录设置面板的展开状态
