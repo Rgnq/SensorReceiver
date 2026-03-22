@@ -625,6 +625,7 @@ class HistoryPage(QWidget):
 
 class SettingsPage(QWidget):
     pathSaveSignal = Signal(str)
+    styleSignal = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -661,9 +662,45 @@ class SettingsPage(QWidget):
         layout.addWidget(self.pathLineEdit,1,0)
         layout.addWidget(self.browserFileBtn,1,1)
         layout.addWidget(self.pathBtn,1,2)
+
+        self.styleCombobox = QComboBox()
+        style_dict = {
+            '深琥珀'     : 'dark_amber.xml',
+            '深蓝'       : 'dark_blue.xml',
+            '深青'       : 'dark_cyan.xml',
+            '深浅绿'     : 'dark_lightgreen.xml',
+            '深粉'       : 'dark_pink.xml',
+            '深紫'       : 'dark_purple.xml',
+            '深红'       : 'dark_red.xml',
+            '深青绿'     : 'dark_teal.xml',
+            '深黄'       : 'dark_yellow.xml',
+            
+            '浅琥珀'     : 'light_amber.xml',
+            '浅蓝'       : 'light_blue.xml',
+            '鲜浅蓝'   : 'light_blue_500.xml',
+            '浅青'       : 'light_cyan.xml',
+            '鲜浅青'   : 'light_cyan_500.xml',
+            '浅绿'       : 'light_lightgreen.xml',
+            '鲜浅绿'   : 'light_lightgreen_500.xml',
+            '浅橙'       : 'light_orange.xml',
+            '浅粉'       : 'light_pink.xml',
+            '鲜鲜浅粉'   : 'light_pink_500.xml',
+            '浅紫'       : 'light_purple.xml',
+            '鲜浅紫'   : 'light_purple_500.xml',
+            '浅红'       : 'light_red.xml',
+            '鲜浅红'   : 'light_red_500.xml',
+            '浅青绿'     : 'light_teal.xml',
+            '鲜浅青绿' : 'light_teal_500.xml',
+            '浅黄'       : 'light_yellow.xml',
+        }
+        self.styleCombobox.addItems(style_dict.keys())
+        self.styleApply = QPushButton("应用")
+        self.styleApply.clicked.connect(lambda:self.styleSignal.emit(style_dict[self.styleCombobox.currentText()]))
+        layout.addWidget(self.styleCombobox,2,0)
+        layout.addWidget(self.styleApply,2,1)
         
         layout.setColumnStretch(0,1)
-        layout.setRowStretch(2,1)
+        layout.setRowStretch(3,1)
 
     def on_pathBtn_click(self):
         directory = self.pathLineEdit.text().strip()

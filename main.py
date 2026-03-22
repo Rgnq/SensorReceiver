@@ -9,6 +9,7 @@ def main():
     app = QApplication(sys.argv)
     apply_stylesheet(app, theme='dark_amber.xml',invert_secondary=False)
     w = MainWindow()
+    w.SettingsPage.styleSignal.connect(lambda x:apply_stylesheet(app,theme=x))
     w.show()
     app.exec()
 
