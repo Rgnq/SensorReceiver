@@ -35,13 +35,17 @@ class Sidebar(QWidget):
         self.setStyleSheet("background-color: rgba(50, 63, 80, 80);")
         self.setAttribute(Qt.WA_StyledBackground, True)   # 绘制背景色
         
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 10, 0, 0)
-        self.layout.setSpacing(2)
+        self.mainLayout = QVBoxLayout(self)
+        self.mainLayout.setContentsMargins(0, 10, 0, 0)
+        self.mainLayout.setSpacing(2)
 
-        self.layout.addStretch()  # Add stretch to push buttons to the top
+        self.mainLayout.addStretch()  # Add stretch to push buttons to the top
+        bottomButton = QPushButton("≡")
+        bottomButton.setFixedHeight(50)
+        bottomButton.clicked.connect(self.toggleSidebar)
+        self.mainLayout.addWidget(bottomButton)
 
-        
+        self.setLayout(self.mainLayout)
     
     def add_button(self, name, icon=None):
         if not self.sidebar_expanded:
@@ -74,7 +78,7 @@ class Sidebar(QWidget):
         self.buttons.append(button)
         # 插入到 stretch 前一位（也就是所有按钮的最后面，stretch 永远在最底）
         # len(self.buttons)-1 是当前新按钮的索引
-        self.layout.insertWidget(len(self.buttons) - 1, button)
+        self.mainLayout.insertWidget(len(self.buttons) - 1, button)
         # 单选互斥
         button.clicked.connect(lambda checked, idx=len(self.buttons)-1: self._on_button_clicked(idx))
 
