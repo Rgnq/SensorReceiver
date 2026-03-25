@@ -15,23 +15,26 @@ class Homepage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        self.AX_label = QLabel("......")
-        self.AY_label = QLabel("......")
-        self.AZ_label = QLabel("......")
-        self.GX_label = QLabel("......")
-        self.GY_label = QLabel("......")
-        self.GZ_label = QLabel("......")
-        self.CO2_label = QLabel("......")
-        self.TVOC_label = QLabel("......")
-        self.TEMP_label = QLabel("......")
-        self.HUM_label = QLabel("......")
-        self.PRESS_label = QLabel("......")
+        self.AX_label = QLineEdit(". . .")
+        self.AY_label = QLineEdit(". . .")
+        self.AZ_label = QLineEdit(". . .")
+        self.GX_label = QLineEdit(". . .")
+        self.GY_label = QLineEdit(". . .")
+        self.GZ_label = QLineEdit(". . .")
+        self.CO2_label = QLineEdit(". . .")
+        self.TVOC_label = QLineEdit(". . .")
+        self.TEMP_label = QLineEdit(". . .")
+        self.HUM_label = QLineEdit(". . .")
+        self.PRESS_label = QLineEdit(". . .")
 
         self.dataBuffer = []
 
         self.labels = [self.AX_label, self.AY_label, self.AZ_label, self.GX_label, self.GY_label, self.GZ_label,
                         self.CO2_label, self.TVOC_label,
                         self.TEMP_label, self.HUM_label, self.PRESS_label]
+        
+        for label in self.labels:
+            label.setReadOnly(True)
         
         self.dataNames = ["AX","AY","AZ","GX","GY","GZ","CO2","TVOC","温度","湿度","压强"]
         self.MPU6050_Data = dict(zip(self.dataNames[0:6],[0 for i in range(6)]))
@@ -43,8 +46,9 @@ class Homepage(QWidget):
         for label in self.labels:
             label.setStyleSheet("background-color: rgba(80,80,100,127)")
 
-        self.anim = None  # 用于存储动画对象
+        self.anims = {"Command":None,"Sensor":None}  # 用于存储动画对象
         self.settingExpanded = False  # 记录设置面板的展开状态
+        self.sensorDisplay = True
         self.runtimeSave = None
 
         self.initUI()
@@ -56,6 +60,7 @@ class Homepage(QWidget):
 
         self.right_vertical.serDataSignal.connect(self.updateDataDisplay)
         self.right_vertical.stopSignal.connect(self.clearData)
+        self.right_vertical.sensorDisplayCheckbox.clicked.connect(self.toggleSensorWidget)
 
 
     def initUI(self):
@@ -67,6 +72,7 @@ class Homepage(QWidget):
         self.left_content = QVBoxLayout()
         self.left_content.setObjectName("left_content")
         # 左侧监测部分--上方三块传感器数据区域
+        self.sensor_widget = QWidget()
         self.sensor_horizontal = QHBoxLayout()
         self.sensor_horizontal.setObjectName("sensor_horizontal")
         # 第一块：MPU6050 六轴传感器数据区块
@@ -78,7 +84,9 @@ class Homepage(QWidget):
         # 第三块：温湿压传感器区块
         self.env_group = self._create_thp_grid()
         self.sensor_horizontal.addLayout(self.env_group, stretch=1)
-        self.left_content.addLayout(self.sensor_horizontal)
+        self.sensor_widget.setLayout(self.sensor_horizontal)
+        self.sensor_widget.setMaximumHeight(150)
+        self.left_content.addWidget(self.sensor_widget)
 
         # 左侧监测部分--下方留白
         self.lowTab = QTabWidget()
@@ -184,31 +192,45 @@ class Homepage(QWidget):
             self.runtimeSave.close()
             self.runtimeSave = None
 
+    def toggleSensorWidget(self):
+        startHeight = self.sensor_widget.height()
+        if self.sensorDisplay:
+            self.animateWidgetDisplay("Sensor", startHeight,0,self.sensor_widget,"maximumHeight")
+        else:
+            self.animateWidgetDisplay("Sensor", startHeight,150,self.sensor_widget,"maximumHeight")
+        self.sensorDisplay = not self.sensorDisplay
 
     def toggleSettingPanel(self):
+        startWidth = self.right_vertical.width()
         if self.settingExpanded:
             # 收起设置面板
-            self.animateSettingPanel(expand=False)
+            self.animateWidgetDisplay("Command", startWidth,0,self.right_vertical,"maximumWidth")
             self.toolButton.setArrowType(Qt.DownArrow)
         else:
             # 展开设置面板
-            self.animateSettingPanel(expand=True)
+            self.animateWidgetDisplay("Command", startWidth,300,self.right_vertical,"maximumWidth")
             self.toolButton.setArrowType(Qt.LeftArrow)
-
         self.settingExpanded = not self.settingExpanded
 
-    def animateSettingPanel(self, expand: bool):
-        start_width = self.right_vertical.width()
-        end_width = 300 if expand else 0
+    # def animateSettingPanel(self, expand: bool):
+    #     start_width = self.right_vertical.width()
+    #     end_width = 300 if expand else 0
 
-        if self.anim and self.anim.state() == QPropertyAnimation.Running:
-            self.anim.stop()
+    #     if self.anim and self.anim.state() == QPropertyAnimation.Running:
+    #         self.anim.stop()
 
-        self.anim = QPropertyAnimation(self.right_vertical, b"maximumWidth")
-        self.anim.setDuration(200)
-        self.anim.setStartValue(start_width)
-        self.anim.setEndValue(end_width)
-        self.anim.start()
+    #     self.anim = QPropertyAnimation(self.right_vertical, b"maximumWidth")
+    #     self.anim.setDuration(200)
+    #     self.anim.setStartValue(start_width)
+    #     self.anim.setEndValue(end_width)
+    #     self.anim.start()
+    def animateWidgetDisplay(self, anime, start, end, widget, property, duration=200):
+        self.anims[anime] = QPropertyAnimation(widget, bytes(property,encoding='utf-8'))
+        self.anims[anime].setDuration(duration)
+        self.anims[anime].setStartValue(start)
+        self.anims[anime].setEndValue(end)
+        self.anims[anime].start()
+
 
     def _create_mpu6050_grid(self):
         """ MPU6050 """
@@ -321,8 +343,12 @@ class CommandPanel(QWidget):
         self.connectButton = QPushButton("连/断")
         self.BaudrateLineEdit = QLineEdit()
         self.autosaveCheckBox = QCheckBox("启用")
-        self.autosaveIntervalLineEdit = QLineEdit()
+        # self.autosaveIntervalLineEdit = QLineEdit()
         self.autosaveIntervalButton = QPushButton("设置")
+        self.sensorDisplayCheckbox = QCheckBox("显示仪表盘")
+        self.TextCopy = QTextEdit()
+        self.TextCopy.setReadOnly(True)
+        
 
         self.gridlayout.addWidget(QLabel("选择端口"), 0, 0)
         self.gridlayout.addWidget(self.refreshPortsButton, 0, 1)
@@ -331,6 +357,7 @@ class CommandPanel(QWidget):
         self.FillcomboxPorts()  # 初始化时填充可用串口列表
         self.refreshPortsButton.clicked.connect(self.FillcomboxPorts)  # 刷新按钮连接槽函数
         self.connectButton.clicked.connect(self.toggleSerialIO)
+
 
         self.gridlayout.addWidget(QLabel("波特率"), 2, 0)
         self.gridlayout.addWidget(self.BaudrateLineEdit, 3, 0)
@@ -343,10 +370,15 @@ class CommandPanel(QWidget):
         self.autosaveCheckBox.setChecked(True)  # 默认启用自动保存
         # self.autosaveIntervalLineEdit.setText("60")  # 默认自动保存间隔
 
+        self.gridlayout.addWidget(self.sensorDisplayCheckbox,5,0,1,2)
+        self.sensorDisplayCheckbox.setChecked(True)
+
+        self.gridlayout.addWidget(self.TextCopy,6,0,1,2)
+
         self.gridlayout.setColumnStretch(0, 4)
         self.gridlayout.setColumnStretch(1, 0)
         self.gridlayout.setColumnStretch(2, 0)
-        self.gridlayout.setRowStretch(5, 1)  # 添加伸缩项，推送内容到顶部
+        self.gridlayout.setRowStretch(6, 1)  # 添加伸缩项，推送内容到顶部
 
     def FillcomboxPorts(self):
         self.selectPortComboBox.clear()

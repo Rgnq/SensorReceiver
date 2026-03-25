@@ -90,9 +90,7 @@ class MainWindow(QMainWindow):
             "日志": self.LogPage,
             "设置": self.SettingsPage
         }
-        self.TextCopy = QTextEdit()
-        self.TextCopy.setReadOnly(True)
-        self.Homepage.right_vertical.gridlayout.addWidget(self.TextCopy,5,0)
+
 
 
     def setSidebarGeometry(self):
@@ -113,9 +111,9 @@ class MainWindow(QMainWindow):
         self.LogPage.append_log(f'{text}',2)
 
     def syncLog(self):
-        self.TextCopy.setText(self.LogPage.textedit.toPlainText())
-        self.TextCopy.moveCursor(QTextCursor.End)
-        self.TextCopy.ensureCursorVisible()
+        self.Homepage.right_vertical.TextCopy.setText(self.LogPage.textedit.toPlainText())
+        self.Homepage.right_vertical.moveCursor(QTextCursor.End)
+        self.Homepage.right_vertical.ensureCursorVisible()
 
     def setSavePath(self,path):
         self.Homepage.pathSave = path
