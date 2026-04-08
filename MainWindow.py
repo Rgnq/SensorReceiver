@@ -112,8 +112,8 @@ class MainWindow(QMainWindow):
 
     def syncLog(self):
         self.Homepage.right_vertical.TextCopy.setText(self.LogPage.textedit.toPlainText())
-        self.Homepage.right_vertical.moveCursor(QTextCursor.End)
-        self.Homepage.right_vertical.ensureCursorVisible()
+        self.Homepage.right_vertical.TextCopy.moveCursor(QTextCursor.End)
+        self.Homepage.right_vertical.TextCopy.ensureCursorVisible()
 
     def setSavePath(self,path):
         self.Homepage.pathSave = path

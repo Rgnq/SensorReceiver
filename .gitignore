@@ -8,6 +8,8 @@ wheels/
 history/
 test/
 QtDesigner
+convert.py
+icon*
 
 # Virtual environments
 .venv

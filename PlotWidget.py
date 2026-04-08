@@ -25,6 +25,13 @@ class SensorPlotter(QMainWindow):
             pw.setTitle(name)
             pw.setLabel('bottom', 'Time (s)')
             pw.setLabel('left', 'Acceleration')
+            pw.setStyleSheet('''
+                    * {
+                        padding: 0px;
+                        border: 0px;
+                        margin: 0px;
+                        }    
+                    ''')
             curve = pw.plot(pen=pg.mkPen('r'))
             self.mpu_plots[name] = pw
             self.mpu_curves[name] = curve
