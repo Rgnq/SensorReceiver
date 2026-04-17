@@ -1,6 +1,18 @@
 import time
-from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QGridLayout
+from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QGridLayout, QFileDialog
 import pyqtgraph as pg
+from pyqtgraph.widgets.FileDialog import FileDialog
+
+original_file_dialog_init = FileDialog.__init__
+
+def patched_init(self, *args, **kwargs):
+    """替换FileDialog的__init__方法"""
+    original_file_dialog_init(self, *args, **kwargs)
+
+    self.setOption(QFileDialog.Option.DontUseNativeDialog, True)
+    self.setStyleSheet('''* {padding: 0px;border: 0px;margin: 0px;}''')
+    
+FileDialog.__init__ = patched_init
 
 class SensorPlotter(QMainWindow):
     def __init__(self):
@@ -25,13 +37,6 @@ class SensorPlotter(QMainWindow):
             pw.setTitle(name)
             pw.setLabel('bottom', 'Time (s)')
             pw.setLabel('left', 'Acceleration')
-            pw.setStyleSheet('''
-                    * {
-                        padding: 0px;
-                        border: 0px;
-                        margin: 0px;
-                        }    
-                    ''')
             curve = pw.plot(pen=pg.mkPen('r'))
             self.mpu_plots[name] = pw
             self.mpu_curves[name] = curve
