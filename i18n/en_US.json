@@ -5,6 +5,14 @@
       "mpu6050": "MPU6050",
       "gas_sensor": "Gas Sensor",
       "thp_sensor": "Temperature & Humidity & Pressure",
+      "ax": "AX",
+      "ay": "AY",
+      "az": "AZ",
+      "gx": "GX",
+      "gy": "GY",
+      "gz": "GZ",
+      "co2": "CO2",
+      "tvoc": "TVOC",
       "plot_toggle": "Show/Hide Chart",
       "plot_tab": "Plot",
       "analysis_tab": "Analysis",
@@ -13,7 +21,8 @@
       "not_connected": "Not connected",
       "temperature": "Temperature",
       "humidity": "Humidity",
-      "pressure": "Pressure"
+      "pressure": "Pressure",
+      "settings": "S\ne\nt\nt\ni\nn\ng\ns"
     },
     "history": {
       "title": "History",
@@ -54,6 +63,11 @@
       "toggle": "Toggle",
       "clear": "Clear",
       "toggle_tooltip": "Toggle log filter level"
+    },
+    "analysis": {
+      "mean": "Mean",
+      "median": "Median",
+      "std_dev": "Std Dev"
     }
   },
   "command_panel": {

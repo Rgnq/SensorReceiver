@@ -5,6 +5,14 @@
       "mpu6050": "MPU6050",
       "gas_sensor": "气体传感器",
       "thp_sensor": "温湿压传感器",
+      "ax": "AX",
+      "ay": "AY",
+      "az": "AZ",
+      "gx": "GX",
+      "gy": "GY",
+      "gz": "GZ",
+      "co2": "CO2",
+      "tvoc": "TVOC",
       "plot_toggle": "显示/隐藏图表",
       "plot_tab": "图像",
       "analysis_tab": "统计",
@@ -13,7 +21,8 @@
       "not_connected": "尚未连接",
       "temperature": "温度",
       "humidity": "湿度",
-      "pressure": "压强"
+      "pressure": "压强",
+      "settings": "设\n置"
     },
     "history": {
       "title": "历史",
@@ -54,6 +63,11 @@
       "toggle": "切换",
       "clear": "清空",
       "toggle_tooltip": "切换日志过滤等级"
+    },
+    "analysis": {
+      "mean": "平均值",
+      "median": "中位数",
+      "std_dev": "标准差"
     }
   },
   "command_panel": {

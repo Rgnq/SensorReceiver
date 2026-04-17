@@ -40,13 +40,14 @@ def prepare_resources():
     
     return True
 
-def build_with_nuitka(standalone=True, onefile=False):
+def build_with_nuitka(standalone=True, onefile=False, compiler="mingw64"):
     """
     使用 Nuitka 构建
     
     Args:
         standalone: 是否生成独立版本（包含所有依赖）
         onefile: 是否打包为单个可执行文件
+        compiler: C 编译器 (mingw64, msvc, clang)
     """
     project_root = get_project_root()
     build_dir = get_build_dir()
@@ -58,42 +59,71 @@ def build_with_nuitka(standalone=True, onefile=False):
     cmd = [
         sys.executable,
         "-m", "nuitka",
-        "--follow-imports",  # 跟踪导入
-        "--prefer-using-dll=msvcrt",  # 使用DLL版本的C运行库
     ]
     
-    # 包含数据文件
-    # 注意：使用相对路径
+    # 编译器选择
+    if compiler:
+        cmd.append(f"--{compiler}")
+    
+    # 单文件选项
+    if onefile:
+        cmd.append("--onefile")
+    
+    # 不跟踪的导入（加快构建速度）
     cmd.extend([
-        "--include-data-dir=i18n=i18n",  # 包含 i18n 目录
+        "--nofollow-import-to=matplotlib",  # matplotlib 库较大，不需要跟踪
+        "--follow-imports",                 # 但要跟踪其他导入
+    ])
+    
+    # 输出目录
+    cmd.extend([
+        f"--output-dir={build_dir}",
+        "--remove-output",  # 移除旧的输出
+    ])
+    
+    # PySide6 相关配置
+    cmd.extend([
+        "--include-module=PySide6.QtOpenGL",  # 包含 OpenGL 模块
+        "--enable-plugin=pyside6",            # 启用 PySide6 插件
+    ])
+    
+    # 数据文件包含
+    cmd.extend([
+        "--include-data-dir=i18n=i18n",      # 包含 i18n 目录
         "--include-data-dir=config=config",  # 包含 config 目录
     ])
     
-    # 设置输出目录
+    # Windows 特定选项
     cmd.extend([
-        f"--output-dir={build_dir}",
+        "--windows-disable-console",  # 禁用控制台窗口
     ])
+    
+    # 检查图标文件是否存在
+    icon_path = project_root / "icon.ico"
+    if icon_path.exists():
+        cmd.append(f"--windows-icon-from-ico={icon_path}")
     
     # 独立版本
     if standalone:
         cmd.append("--standalone")
-        if onefile:
-            cmd.append("--onefile")
     
-    # 添加优化选项
+    # 显示进度和内存信息
     cmd.extend([
-        "-O",  # 优化
-        "--remove-output",  # 移除旧的输出
+        "--show-progress",  # 显示构建进度
+        "--show-memory",    # 显示内存使用情况
     ])
+    
+    # 优化选项
+    cmd.append("-O")  # 优化级别
     
     # 主脚本
     cmd.append("main.py")
     
-    print("=" * 60)
+    print("=" * 70)
     print("Nuitka 构建命令:")
-    print("=" * 60)
+    print("=" * 70)
     print(" ".join(cmd))
-    print("=" * 60)
+    print("=" * 70)
     
     # 执行构建
     try:
@@ -162,12 +192,14 @@ def main():
                        help="打包为单个可执行文件")
     parser.add_argument("--no-copy", action="store_true", default=False,
                        help="不复制到 dist 目录")
+    parser.add_argument("--compiler", choices=["mingw64", "msvc", "clang"], default="mingw64",
+                       help="C 编译器选择 (默认: mingw64)")
     
     args = parser.parse_args()
     
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print("  SensorReceiver Nuitka 打包")
-    print("=" * 60 + "\n")
+    print("=" * 70 + "\n")
     
     # 步骤1: 准备资源
     print("[1/4] 检查资源文件...")
@@ -176,8 +208,8 @@ def main():
     print()
     
     # 步骤2: 构建
-    print("[2/4] 使用 Nuitka 构建...")
-    if not build_with_nuitka(standalone=args.standalone, onefile=args.onefile):
+    print("[2/4] 使用 Nuitka 构建 (编译器: {})...".format(args.compiler))
+    if not build_with_nuitka(standalone=args.standalone, onefile=args.onefile, compiler=args.compiler):
         return 1
     print()
     
@@ -193,16 +225,16 @@ def main():
     exe_path = dist_dir / "SensorReceiver.exe"
     
     if verify_package(exe_path):
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 70)
         print("  ✅ 打包成功！")
-        print("=" * 60)
+        print("=" * 70)
         print(f"\n可执行文件位置: {exe_path}")
         print(f"包含目录位置: {dist_dir}\n")
         return 0
     else:
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 70)
         print("  ⚠ 验证警告")
-        print("=" * 60)
+        print("=" * 70)
         return 0
 
 if __name__ == "__main__":

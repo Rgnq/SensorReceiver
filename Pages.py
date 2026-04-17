@@ -86,7 +86,29 @@ class Homepage(QWidget):
         self.lowTab.setTabText(1, t("page.homepage.analysis_tab"))
         self.sendline.setPlaceholderText(t("page.homepage.command_input"))
         self.sendlineButton.setText(t("page.homepage.send_button"))
-        self.toolButton.setText("设\n置")  # 保持不变
+        self.toolButton.setText(t("page.homepage.settings"))
+        
+        # 更新传感器标题
+        self.mpu6050_title.setText(t("page.homepage.mpu6050"))
+        self.gas_sensor_title.setText(t("page.homepage.gas_sensor"))
+        self.thp_sensor_title.setText(t("page.homepage.thp_sensor"))
+        
+        # 更新传感器轴标签
+        self.ax_label.setText(t("page.homepage.ax"))
+        self.ay_label.setText(t("page.homepage.ay"))
+        self.az_label.setText(t("page.homepage.az"))
+        self.gx_label.setText(t("page.homepage.gx"))
+        self.gy_label.setText(t("page.homepage.gy"))
+        self.gz_label.setText(t("page.homepage.gz"))
+        
+        # 更新气体传感器标签
+        self.co2_label.setText(t("page.homepage.co2"))
+        self.tvoc_label.setText(t("page.homepage.tvoc"))
+        
+        # 更新温湿压传感器标签
+        self.temp_sensor_label.setText(t("page.homepage.temperature"))
+        self.humidity_sensor_label.setText(t("page.homepage.humidity"))
+        self.pressure_sensor_label.setText(t("page.homepage.pressure"))
         
         # 更新右侧面板文本
         self.right_vertical.update_ui_text()
@@ -139,8 +161,8 @@ class Homepage(QWidget):
         # 左侧监测部分--最下方命令输入行
         leftdown_horizontal = QHBoxLayout()
         self.sendline = QLineEdit()
-        self.sendline.setPlaceholderText("输入命令并按回车发送")
-        self.sendlineButton = QPushButton("发送")
+        self.sendline.setPlaceholderText(t("page.homepage.command_input"))
+        self.sendlineButton = QPushButton(t("page.homepage.send_button"))
         self.sendline.returnPressed.connect(self.sendText)
         self.sendlineButton.clicked.connect(self.sendText)
         leftdown_horizontal.addWidget(self.sendline)
@@ -162,7 +184,7 @@ class Homepage(QWidget):
 
         # 工具按钮
         self.toolButton = QToolButton(self)
-        self.toolButton.setText("设\n置")
+        self.toolButton.setText(t("page.homepage.settings"))
         self.toolButton.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.toolButton.setObjectName("toolButton")
         self.toolButton.setStyleSheet(get_tool_button_stylesheet(self.is_dark_theme))
@@ -281,26 +303,32 @@ class Homepage(QWidget):
         grid.setObjectName("mpu6050_grid")
 
         # 标题
-        title = QLabel("MPU6050")
-        title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
-        grid.addWidget(title, 0, 0, 1, 4)
+        self.mpu6050_title = QLabel(t("page.homepage.mpu6050"))
+        self.mpu6050_title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
+        grid.addWidget(self.mpu6050_title, 0, 0, 1, 4)
 
         # X轴
-        grid.addWidget(QLabel("AX"), 1, 0)
+        self.ax_label = QLabel(t("page.homepage.ax"))
+        grid.addWidget(self.ax_label, 1, 0)
         grid.addWidget(self.AX_label, 1, 1)
-        grid.addWidget(QLabel("GX"), 1, 2)
+        self.gx_label = QLabel(t("page.homepage.gx"))
+        grid.addWidget(self.gx_label, 1, 2)
         grid.addWidget(self.GX_label, 1, 3)
 
         # Y轴
-        grid.addWidget(QLabel("AY"), 2, 0)
+        self.ay_label = QLabel(t("page.homepage.ay"))
+        grid.addWidget(self.ay_label, 2, 0)
         grid.addWidget(self.AY_label, 2, 1)
-        grid.addWidget(QLabel("GY"), 2, 2)
+        self.gy_label = QLabel(t("page.homepage.gy"))
+        grid.addWidget(self.gy_label, 2, 2)
         grid.addWidget(self.GY_label, 2, 3)
 
         # Z轴
-        grid.addWidget(QLabel("AZ"), 3, 0)
+        self.az_label = QLabel(t("page.homepage.az"))
+        grid.addWidget(self.az_label, 3, 0)
         grid.addWidget(self.AZ_label, 3, 1)
-        grid.addWidget(QLabel("GZ"), 3, 2)
+        self.gz_label = QLabel(t("page.homepage.gz"))
+        grid.addWidget(self.gz_label, 3, 2)
         grid.addWidget(self.GZ_label, 3, 3)
 
         grid.setRowStretch(0, 1)
@@ -315,14 +343,16 @@ class Homepage(QWidget):
         grid = QGridLayout()
         grid.setObjectName("gas_grid")
 
-        title = QLabel("气体传感器")
-        title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
-        grid.addWidget(title, 0, 0, 1, 2)
+        self.gas_sensor_title = QLabel(t("page.homepage.gas_sensor"))
+        self.gas_sensor_title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
+        grid.addWidget(self.gas_sensor_title, 0, 0, 1, 2)
 
-        grid.addWidget(QLabel("CO2"), 1, 0)
+        self.co2_label = QLabel(t("page.homepage.co2"))
+        grid.addWidget(self.co2_label, 1, 0)
         grid.addWidget(self.CO2_label, 1, 1)
 
-        grid.addWidget(QLabel("TVOC"), 2, 0)
+        self.tvoc_label = QLabel(t("page.homepage.tvoc"))
+        grid.addWidget(self.tvoc_label, 2, 0)
         grid.addWidget(self.TVOC_label, 2, 1)
 
         grid.addItem(
@@ -342,17 +372,20 @@ class Homepage(QWidget):
         grid = QGridLayout()
         grid.setObjectName("env_grid")
 
-        title = QLabel("温湿压传感器")
-        title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
-        grid.addWidget(title, 0, 0, 1, 2)
+        self.thp_sensor_title = QLabel(t("page.homepage.thp_sensor"))
+        self.thp_sensor_title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
+        grid.addWidget(self.thp_sensor_title, 0, 0, 1, 2)
 
-        grid.addWidget(QLabel("温度"), 1, 0)
+        self.temp_sensor_label = QLabel(t("page.homepage.temperature"))
+        grid.addWidget(self.temp_sensor_label, 1, 0)
         grid.addWidget(self.TEMP_label, 1, 1)
 
-        grid.addWidget(QLabel("湿度"), 2, 0)
+        self.humidity_sensor_label = QLabel(t("page.homepage.humidity"))
+        grid.addWidget(self.humidity_sensor_label, 2, 0)
         grid.addWidget(self.HUM_label, 2, 1)
 
-        grid.addWidget(QLabel("压强"), 3, 0)
+        self.pressure_sensor_label = QLabel(t("page.homepage.pressure"))
+        grid.addWidget(self.pressure_sensor_label, 3, 0)
         grid.addWidget(self.PRESS_label, 3, 1)
 
         grid.setRowStretch(0, 1)
@@ -1032,14 +1065,41 @@ class AnalysisTab(QWidget):
 
     def update_ui_text(self):
         """更新UI文本（用于语言切换）"""
-        # 这个方法保留以备后用
-        pass
+        # 更新传感器名称
+        dataNames = [
+            t("page.homepage.ax"), t("page.homepage.ay"), t("page.homepage.az"),
+            t("page.homepage.gx"), t("page.homepage.gy"), t("page.homepage.gz"),
+            t("page.homepage.co2"), t("page.homepage.tvoc"),
+            t("page.homepage.temperature"), t("page.homepage.humidity"), t("page.homepage.pressure")
+        ]
+        
+        # 更新统计值名称
+        valueNames = [t("page.analysis.mean"), t("page.analysis.median"), t("page.analysis.std_dev")]
+        
+        self.dataNames = dataNames
+        self.valueNames = valueNames
+        
+        # 更新表格标题
+        self.dataTable.setHorizontalHeaderLabels([*valueNames,*['' for i in range(27)]])
+        self.dataTable.setVerticalHeaderLabels([*dataNames,*['' for i in range(19)]])
 
     def initUI(self):
         self.main_layout = QVBoxLayout(self)
 
-        dataNames = ["AX","AY","AZ","GX","GY","GZ","CO2","TVOC","温度","湿度","压强"]
-        valueNames = ['平均值','中位数','标准差']
+        # 使用翻译函数获取传感器名称
+        dataNames = [
+            t("page.homepage.ax"), t("page.homepage.ay"), t("page.homepage.az"),
+            t("page.homepage.gx"), t("page.homepage.gy"), t("page.homepage.gz"),
+            t("page.homepage.co2"), t("page.homepage.tvoc"),
+            t("page.homepage.temperature"), t("page.homepage.humidity"), t("page.homepage.pressure")
+        ]
+        
+        # 使用翻译函数获取统计值名称
+        valueNames = [t("page.analysis.mean"), t("page.analysis.median"), t("page.analysis.std_dev")]
+        
+        self.dataNames = dataNames
+        self.valueNames = valueNames
+        
         self.dataTable = QTableWidget()
         self.dataTable.setRowCount(30)
         self.dataTable.setColumnCount(30)
@@ -1079,7 +1139,7 @@ class LogPage(QWidget):
 
         self.is_dark_theme = True  # 追踪当前主题
         self.LogLevel = 0 # 0-Error 1-Warning 2-Info
-        self.levelNames = ["Error","Warning","Info"]
+        self.levelNames = [t("page.log.error"), t("page.log.warning"), t("page.log.info")]
 
         self.initUI()
 
@@ -1099,14 +1159,14 @@ class LogPage(QWidget):
     def initUI(self):
         layout = QVBoxLayout(self)
         self.LogLevelLabel = QLabel()
-        self.LogLevelLabel.setText(f'日志报告等级：{self.levelNames[self.LogLevel]}')
+        self.LogLevelLabel.setText(f'{t("page.log.level")}{self.levelNames[self.LogLevel]}')
         self.LogLevelToggleBtn = QPushButton()
-        self.LogLevelToggleBtn.setText("切换")
-        self.LogLevelToggleBtn.setToolTip("切换日志过滤等级")
+        self.LogLevelToggleBtn.setText(t("page.log.toggle"))
+        self.LogLevelToggleBtn.setToolTip(t("page.log.toggle_tooltip"))
         self.LogLevelToggleBtn.clicked.connect(self.on_LogBtn_click)
 
         self.clearBtn = QPushButton()
-        self.clearBtn.setText("清空")
+        self.clearBtn.setText(t("page.log.clear"))
         self.clearBtn.clicked.connect(self.clearText)
 
         self.textedit = QTextEdit()
@@ -1120,7 +1180,7 @@ class LogPage(QWidget):
     
     def on_LogBtn_click(self):
         self.LogLevel = (self.LogLevel + 1) % 3
-        self.LogLevelLabel.setText(f'日志报告等级：{self.levelNames[self.LogLevel]}')
+        self.LogLevelLabel.setText(f'{t("page.log.level")}{self.levelNames[self.LogLevel]}')
 
     def clearText(self):
         self.textedit.clear()
