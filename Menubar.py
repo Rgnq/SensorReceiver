@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt, QDateTime, QTimer
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QPushButton
 from PySide6.QtGui import QIcon, QCursor
-#from importlib.resources import files
+from colorstyle import *
 
 class Menubar(QWidget):
     def __init__(self, parent):
@@ -9,12 +9,11 @@ class Menubar(QWidget):
         self.parent = parent
         self.old_pos = None
         self.maxstate = False
+        self.is_dark_theme = True  # 追踪当前主题
         
         
         self.setFixedHeight(40)
-        self.setStyleSheet("""
-            background: #2d2d2d;
-        """)
+        self.setStyleSheet(get_menubar_stylesheet(self.is_dark_theme))
         
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -24,7 +23,7 @@ class Menubar(QWidget):
         self.titleWidget = QWidget()
         self.titleWidget.setLayout(QHBoxLayout())
         self.title = QLabel("")
-        self.title.setStyleSheet("color: white; font-size: 16px; padding-left: 10px;")
+        self.title.setStyleSheet(get_menubar_title_stylesheet(self.is_dark_theme))
         self.titleTime = QLabel("当前时间：")
         self.titleWidget.layout().addWidget(self.title)
         self.titleWidget.layout().addWidget(self.titleTime)
@@ -47,18 +46,7 @@ class Menubar(QWidget):
         
         for btn in (self.min_btn, self.max_btn, self.close_btn):
             btn.setFixedSize(32, 28)
-            btn.setStyleSheet("""
-                QPushButton {
-                    color: white;
-                    background: transparent;
-                    border: None;
-                    font-size: 20px;
-                    padding: 1px;
-                }
-                QPushButton:hover {
-                    background: #3a3a3a;
-                }
-            """)
+            btn.setStyleSheet(get_menubar_button_stylesheet(self.is_dark_theme))
             btn_layout.addWidget(btn)
         
         self.min_btn.clicked.connect(self.parent.showMinimized)
@@ -74,6 +62,14 @@ class Menubar(QWidget):
         self.timer.timeout.connect(self.update_time)
         self.timer.start(1000)  # 每秒更新一次时间
         self.update_time()  # 初始化时立即更新时间显示
+
+    def update_style(self, is_dark: bool):
+        """更新主题样式"""
+        self.is_dark_theme = is_dark
+        self.setStyleSheet(get_menubar_stylesheet(is_dark))
+        self.title.setStyleSheet(get_menubar_title_stylesheet(is_dark))
+        for btn in (self.min_btn, self.max_btn, self.close_btn):
+            btn.setStyleSheet(get_menubar_button_stylesheet(is_dark))
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.maxstate == False:

@@ -1,12 +1,14 @@
 from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QTableWidget, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
                             QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox,
-                            QCalendarWidget, QDialog, QStyle, QTableWidgetItem)
+                            QCalendarWidget, QDialog, QStyle, QTableWidgetItem, QColorDialog, QScrollArea, QFrame)
 from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDate
+from PySide6.QtGui import QColor
 from serial.tools import list_ports
 from Serial import SerialThread
 from PlotWidget import SensorPlotter
 import os
 import time
+from colorstyle import *
 
 class Homepage(QWidget):
     sendTextSignal = Signal(str)
@@ -14,6 +16,8 @@ class Homepage(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        
+        self.is_dark_theme = True  # 追踪当前主题
         
         self.AX_label = QLineEdit(". . .")
         self.AY_label = QLineEdit(". . .")
@@ -44,23 +48,34 @@ class Homepage(QWidget):
         self.pathSave = "history"
 
         for label in self.labels:
-            label.setStyleSheet("background-color: rgba(80,80,100,127)")
+            label.setStyleSheet(get_homepage_label_stylesheet(self.is_dark_theme))
 
-        self.anims = {"Command":None,"Sensor":None}  # 用于存储动画对象
+        self.anims = {"Command":None,"Sensor":None,"Plot":None}  # 用于存储动画对象
         self.settingExpanded = False  # 记录设置面板的展开状态
         self.sensorDisplay = True
+        self.plotDisplay = True
         self.runtimeSave = None
 
         self.initUI()
 
-        self.setStyleSheet('''
-                        QLabel[text~="MPU6050"], QLabel[text~="气体传感器"], QLabel[text~="温湿压传感器"]
-                        {background-color: #404040}
-                    ''')
+        self.setStyleSheet(get_homepage_sensor_label_stylesheet(self.is_dark_theme))
 
         self.right_vertical.serDataSignal.connect(self.updateDataDisplay)
         self.right_vertical.stopSignal.connect(self.clearData)
         self.right_vertical.sensorDisplayCheckbox.clicked.connect(self.toggleSensorWidget)
+
+    def update_style(self, is_dark: bool):
+        """更新主题样式"""
+        self.is_dark_theme = is_dark
+        # 更新所有标签样式
+        for label in self.labels:
+            label.setStyleSheet(get_homepage_label_stylesheet(is_dark))
+        # 更新整体样式
+        self.setStyleSheet(get_homepage_sensor_label_stylesheet(is_dark))
+        # 更新工具按钮样式
+        self.toolButton.setStyleSheet(get_tool_button_stylesheet(is_dark))
+        # 更新右侧面板的样式
+        self.right_vertical.update_style(is_dark)
 
 
     def initUI(self):
@@ -89,19 +104,23 @@ class Homepage(QWidget):
         self.left_content.addWidget(self.sensor_widget)
 
         # 左侧监测部分--下方留白
+        self.low_vertical = QVBoxLayout()
+        self.low_vertical_btn = QPushButton("显示/隐藏图表")
+        self.low_vertical_btn.clicked.connect(self.togglePlotWidget)
+        self.low_vertical.addWidget(self.low_vertical_btn)
+
         self.lowTab = QTabWidget()
         self.lowTab.setStyleSheet("* {border-radius: 0px;}")
         self.RegionPlot = SensorPlotter()
         self.lowTab.addTab(self.RegionPlot,"图像")
         self.DataAnalysis = AnalysisTab()
         self.lowTab.addTab(self.DataAnalysis,"统计")
-        # self.left_content.addSpacerItem(
-        #     QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        # )
-
-        self.left_content.addWidget(self.lowTab)
-        self.left_content.setStretch(0, 2)
-        self.left_content.setStretch(1, 3)
+        self.low_vertical.addWidget(self.lowTab)
+        
+        self.left_content.addLayout(self.low_vertical)
+        self.left_content.setStretch(0, 1)
+        self.left_content.setStretch(1, 8)
+        self.left_content.addStretch(1)
 
         # 左侧监测部分--最下方命令输入行
         leftdown_horizontal = QHBoxLayout()
@@ -129,8 +148,10 @@ class Homepage(QWidget):
 
         # 工具按钮
         self.toolButton = QToolButton(self)
+        self.toolButton.setText("设\n置")
+        self.toolButton.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.toolButton.setObjectName("toolButton")
-        self.toolButton.setStyleSheet("* {background-color: #404040}")
+        self.toolButton.setStyleSheet(get_tool_button_stylesheet(self.is_dark_theme))
         self.toolButton.setArrowType(Qt.DownArrow)
         sp = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self.toolButton.setSizePolicy(sp)
@@ -199,6 +220,14 @@ class Homepage(QWidget):
         else:
             self.animateWidgetDisplay("Sensor", startHeight,150,self.sensor_widget,"maximumHeight")
         self.sensorDisplay = not self.sensorDisplay
+
+    def togglePlotWidget(self):
+        startHeight = self.lowTab.height()
+        if self.plotDisplay:
+            self.animateWidgetDisplay("Plot", startHeight,0,self.lowTab,"maximumHeight")
+        else:
+            self.animateWidgetDisplay("Plot", startHeight,900,self.lowTab,"maximumHeight")
+        self.plotDisplay = not self.plotDisplay
 
     def toggleSettingPanel(self):
         startWidth = self.right_vertical.width()
@@ -327,6 +356,8 @@ class CommandPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.is_dark_theme = True  # 追踪当前主题
+        
         self.autoSaveStatus = True
         self.autoSaveInterval = 60
 
@@ -334,6 +365,12 @@ class CommandPanel(QWidget):
         self.serState = False
 
         self.initUI()
+
+    def update_style(self, is_dark: bool):
+        """更新主题样式"""
+        self.is_dark_theme = is_dark
+        colors = get_theme_colors(is_dark)
+        # 这里可以添加更多的样式更新逻辑
 
     def initUI(self):
         self.gridlayout = QGridLayout(self)
@@ -428,6 +465,8 @@ class HistoryPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.is_dark_theme = True  # 追踪当前主题
+
         self.msg = QMessageBox()
         self.msg.setOption(QMessageBox.DontUseNativeDialog, True)
         self.msg.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
@@ -446,6 +485,11 @@ class HistoryPage(QWidget):
         self.dialog.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
         
         self.initUI()
+
+    def update_style(self, is_dark: bool):
+        """更新主题样式"""
+        self.is_dark_theme = is_dark
+        # HistoryPage的样式主要由qt_material处理，这里保留接口以保持一致性
     
     def initUI(self):
         nowDir = os.getcwd()
@@ -658,9 +702,14 @@ class HistoryPage(QWidget):
 class SettingsPage(QWidget):
     pathSaveSignal = Signal(str)
     styleSignal = Signal(str)
+    themeColorsChangedSignal = Signal(bool)  # True表示深色主题，False表示浅色主题
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        self.is_dark_theme = True  # 追踪当前主题
+        # 加载保存的主题颜色
+        load_theme_colors()
 
         self.dialog = QFileDialog()
         self.dialog.setWindowTitle("请选择文件夹")
@@ -677,24 +726,33 @@ class SettingsPage(QWidget):
         
         self.initUI()
 
+    def update_style(self, is_dark: bool):
+        """更新主题样式"""
+        self.is_dark_theme = is_dark
+        # SettingsPage的样式主要由qt_material处理，这里保留接口以保持一致性
+
     def initUI(self):
-        layout = QGridLayout(self)
+        main_layout = QVBoxLayout(self)
+        
+        # ===== 数据保存目录部分 =====
+        path_layout = QGridLayout()
         nowDir = os.getcwd()
 
         pathLabel = QLabel("数据保存目录")
         self.pathLineEdit = QLineEdit()
         self.pathLineEdit.setText(f"{nowDir}\\history")
-        self.browserFileBtn = QPushButton()
-        self.browserFileBtn.setText("浏览...")
+        self.browserFileBtn = QPushButton("浏览...")
         self.browserFileBtn.clicked.connect(self.select_folder)
-        self.pathBtn = QPushButton()
-        self.pathBtn.setText("设置")
+        self.pathBtn = QPushButton("设置")
         self.pathBtn.clicked.connect(self.on_pathBtn_click)
-        layout.addWidget(pathLabel,0,0)
-        layout.addWidget(self.pathLineEdit,1,0)
-        layout.addWidget(self.browserFileBtn,1,1)
-        layout.addWidget(self.pathBtn,1,2)
+        path_layout.addWidget(pathLabel, 0, 0)
+        path_layout.addWidget(self.pathLineEdit, 1, 0)
+        path_layout.addWidget(self.browserFileBtn, 1, 1)
+        path_layout.addWidget(self.pathBtn, 1, 2)
+        main_layout.addLayout(path_layout)
 
+        # ===== qt_material主题部分 =====
+        style_layout = QGridLayout()
         self.styleCombobox = QComboBox()
         style_dict = {
             '深琥珀'     : 'dark_amber.xml',
@@ -725,14 +783,133 @@ class SettingsPage(QWidget):
             '鲜浅青绿' : 'light_teal_500.xml',
             '浅黄'       : 'light_yellow.xml',
         }
+        self.style_dict = style_dict
         self.styleCombobox.addItems(style_dict.keys())
+        self.styleCombobox.setStyleSheet("QComboBox { combobox-popup: 0; }")
+        self.styleCombobox.setMaxVisibleItems(8)
         self.styleApply = QPushButton("应用")
-        self.styleApply.clicked.connect(lambda:self.styleSignal.emit(style_dict[self.styleCombobox.currentText()]))
-        layout.addWidget(self.styleCombobox,2,0)
-        layout.addWidget(self.styleApply,2,1)
+        self.styleApply.clicked.connect(lambda: self.styleSignal.emit(style_dict[self.styleCombobox.currentText()]))
+        style_layout.addWidget(QLabel("Material主题"), 0, 0)
+        style_layout.addWidget(self.styleCombobox, 1, 0)
+        style_layout.addWidget(self.styleApply, 1, 1)
+        main_layout.addLayout(style_layout)
+
+        # ===== 自定义颜色部分 =====
+        color_label = QLabel("自定义主题颜色")
+        color_label.setStyleSheet("font-weight: bold; font-size: 12px; margin-top: 10px;")
+        main_layout.addWidget(color_label)
+
+        # 选择要编辑的主题
+        theme_layout = QHBoxLayout()
+        theme_layout.addWidget(QLabel("编辑主题:"))
+        self.themeTypeCombo = QComboBox()
+        self.themeTypeCombo.addItems(["深色主题", "浅色主题"])
+        self.themeTypeCombo.setMinimumWidth(150)
+        self.themeTypeCombo.currentIndexChanged.connect(self.on_theme_type_changed)
+        theme_layout.addWidget(self.themeTypeCombo)
+        theme_layout.addStretch()
+        main_layout.addLayout(theme_layout)
+
+        # 颜色选择面板
+        self.color_panel_layout = QGridLayout()
+        self.color_buttons = {}
+        self.create_color_panel()
+        main_layout.addLayout(self.color_panel_layout)
+
+        # 重置按钮
+        reset_layout = QHBoxLayout()
+        reset_layout.addStretch()
+        self.resetColorBtn = QPushButton("重置为默认颜色")
+        self.resetColorBtn.clicked.connect(self.reset_theme_colors)
+        reset_layout.addWidget(self.resetColorBtn)
+        main_layout.addLayout(reset_layout)
+
+        # 添加伸缩项
+        main_layout.addStretch()
+
+    def create_color_panel(self):
+        """创建颜色选择面板"""
+        # 清空旧的布局
+        while self.color_panel_layout.count():
+            item = self.color_panel_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         
-        layout.setColumnStretch(0,1)
-        layout.setRowStretch(3,1)
+        self.color_buttons = {}
+        is_dark = self.themeTypeCombo.currentIndex() == 0
+        current_colors = dark_theme_colors if is_dark else light_theme_colors
+        
+        color_names = ["Background", "Surface", "Text_Primary", "Text_Secondary", "Accent", "Border_Hover"]
+        color_labels = ["背景色", "表面色", "主文本色", "副文本色", "强调色", "悬停边框色"]
+        
+        for i, (color_key, color_label) in enumerate(zip(color_names, color_labels)):
+            label = QLabel(color_label)
+            label.setMinimumWidth(80)
+            
+            # 创建颜色按钮
+            btn = QPushButton()
+            btn.setFixedSize(60, 30)
+            color = current_colors.get(color_key, "#000000")
+            btn.setStyleSheet(f"background-color: {color}; border: 1px solid #666; border-radius: 3px;")
+            btn.clicked.connect(lambda checked, key=color_key, is_dark=is_dark: 
+                               self.on_color_button_clicked(key, is_dark))
+            
+            # 创建颜色值显示标签
+            value_label = QLineEdit(color)
+            value_label.setReadOnly(True)
+            value_label.setMinimumWidth(100)
+            
+            self.color_buttons[color_key] = {
+                'button': btn,
+                'value_label': value_label,
+                'label': label
+            }
+            
+            row = i
+            self.color_panel_layout.addWidget(label, row, 0)
+            self.color_panel_layout.addWidget(btn, row, 1)
+            self.color_panel_layout.addWidget(value_label, row, 2)
+
+    def on_color_button_clicked(self, color_key: str, is_dark: bool):
+        """处理颜色按钮点击事件"""
+        current_colors = dark_theme_colors if is_dark else light_theme_colors
+        current_color = current_colors.get(color_key, "#000000")
+        
+        # 打开颜色选择对话框
+        color = QColorDialog.getColor(
+            QColor(current_color),
+            self,
+            f"选择{color_key}颜色"
+        )
+        
+        if color.isValid():
+            hex_color = color.name()
+            # 更新颜色
+            current_colors[color_key] = hex_color
+            
+            # 保存到文件
+            save_theme_colors(is_dark, current_colors)
+            
+            # 更新按钮显示
+            self.color_buttons[color_key]['button'].setStyleSheet(
+                f"background-color: {hex_color}; border: 1px solid #666; border-radius: 3px;"
+            )
+            self.color_buttons[color_key]['value_label'].setText(hex_color)
+            
+            # 发出信号通知主窗口更新样式
+            self.themeColorsChangedSignal.emit(is_dark)
+
+    def on_theme_type_changed(self):
+        """处理主题类型改变"""
+        self.create_color_panel()
+
+    def reset_theme_colors(self):
+        """重置主题颜色为默认值"""
+        is_dark = self.themeTypeCombo.currentIndex() == 0
+        reset_theme_colors(is_dark)
+        self.create_color_panel()
+        self.themeColorsChangedSignal.emit(is_dark)
+        QMessageBox.information(self, "提示", "已重置为默认颜色")
 
     def on_pathBtn_click(self):
         directory = self.pathLineEdit.text().strip()
@@ -755,7 +932,13 @@ class SettingsPage(QWidget):
 class AnalysisTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.is_dark_theme = True  # 追踪当前主题
         self.initUI()
+
+    def update_style(self, is_dark: bool):
+        """更新主题样式"""
+        self.is_dark_theme = is_dark
+        # AnalysisTab的样式主要由qt_material处理，这里保留接口以保持一致性
 
     def initUI(self):
         self.main_layout = QVBoxLayout(self)
@@ -799,10 +982,16 @@ class LogPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.is_dark_theme = True  # 追踪当前主题
         self.LogLevel = 0 # 0-Error 1-Warning 2-Info
         self.levelNames = ["Error","Warning","Info"]
 
         self.initUI()
+
+    def update_style(self, is_dark: bool):
+        """更新主题样式"""
+        self.is_dark_theme = is_dark
+        # LogPage的样式主要由qt_material处理，这里保留接口以保持一致性
 
     def initUI(self):
         layout = QVBoxLayout(self)

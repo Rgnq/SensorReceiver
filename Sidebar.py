@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton
 from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QIcon
+from colorstyle import *
 
 class SidebarButton(QPushButton):
     def __init__(self, text, icon=None):
@@ -23,6 +24,7 @@ class Sidebar(QWidget):
         self.sidebar_expanded = False
         self.collapsed_width = 50
         self.expanded_width = 200
+        self.is_dark_theme = True  # 追踪当前主题
         
 
         self.initUI()
@@ -31,8 +33,7 @@ class Sidebar(QWidget):
         
     def initUI(self):
         self.setFixedWidth(self.collapsed_width)
-        #self.setStyleSheet("background-color: #2c3e50;")
-        self.setStyleSheet("background-color: rgba(50, 63, 80, 80);")
+        self.setStyleSheet(get_sidebar_stylesheet(self.is_dark_theme))
         self.setAttribute(Qt.WA_StyledBackground, True)   # 绘制背景色
         
         self.mainLayout = QVBoxLayout(self)
@@ -47,28 +48,20 @@ class Sidebar(QWidget):
 
         self.setLayout(self.mainLayout)
     
+    def update_style(self, is_dark: bool):
+        """更新主题样式"""
+        self.is_dark_theme = is_dark
+        self.setStyleSheet(get_sidebar_stylesheet(is_dark))
+        # 更新所有按钮的样式
+        for button in self.buttons:
+            button.setStyleSheet(get_sidebar_button_stylesheet(is_dark))
+    
     def add_button(self, name, icon=None):
         if not self.sidebar_expanded:
             button = SidebarButton("", icon=icon)
         else:
             button = SidebarButton(name, icon=icon)
-        button.setStyleSheet("""
-                SidebarButton {
-                    background-color: #2c3e50;
-                    color: white;
-                    border: none;
-                    font-weight: bold;
-                    font-size: 18px;
-                    text-align: center;
-                    icon-size: 30px;
-                }
-                SidebarButton:hover {
-                    background-color: #34495e;
-                }
-                SidebarButton:checked {
-                    background-color: #3498db;
-                }
-            """)
+        button.setStyleSheet(get_sidebar_button_stylesheet(self.is_dark_theme))
         button.setCheckable(True)
         button.setMaximumHeight(100)
         if not self.buttons:

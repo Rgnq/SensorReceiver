@@ -10,6 +10,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.is_dark_theme = True  # 追踪当前主题
+        
         self.initUI()
 
         self.sidebar.clickedSignal.connect(self.on_sidebar_button_clicked)
@@ -19,6 +21,8 @@ class MainWindow(QMainWindow):
         self.Homepage.right_vertical.serLogSignal.connect(self.LogError)
         self.LogPage.textedit.textChanged.connect(self.syncLog)
         self.SettingsPage.pathSaveSignal.connect(self.setSavePath)
+        # 连接颜色改变信号
+        self.SettingsPage.themeColorsChangedSignal.connect(self.on_theme_colors_changed)
     
     def initUI(self):
         self.initPages()
@@ -117,6 +121,22 @@ class MainWindow(QMainWindow):
 
     def setSavePath(self,path):
         self.Homepage.pathSave = path
+
+    def on_theme_colors_changed(self, is_dark: bool):
+        """处理自定义主题颜色改变"""
+        self.update_style(is_dark)
+
+    def update_style(self, is_dark: bool):
+        """更新所有组件的主题样式"""
+        self.is_dark_theme = is_dark
+        # 更新菜单栏、侧边栏和主页的样式
+        self.menubar.update_style(is_dark)
+        self.sidebar.update_style(is_dark)
+        self.Homepage.update_style(is_dark)
+        # 更新所有页面的样式
+        self.HistoryPage.update_style(is_dark)
+        self.SettingsPage.update_style(is_dark)
+        self.LogPage.update_style(is_dark)
 
     def movecenter(self):
         # 获取屏幕可用区域的中心点
