@@ -9,6 +9,7 @@ from PlotWidget import SensorPlotter
 import os
 import time
 from colorstyle import *
+from i18n import t, set_language, get_supported_languages, get_current_language
 
 class Homepage(QWidget):
     sendTextSignal = Signal(str)
@@ -76,6 +77,19 @@ class Homepage(QWidget):
         self.toolButton.setStyleSheet(get_tool_button_stylesheet(is_dark))
         # 更新右侧面板的样式
         self.right_vertical.update_style(is_dark)
+
+    def update_ui_text(self):
+        """更新UI文本（用于语言切换）"""
+        # 更新按钮文本
+        self.low_vertical_btn.setText(t("page.homepage.plot_toggle"))
+        self.lowTab.setTabText(0, t("page.homepage.plot_tab"))
+        self.lowTab.setTabText(1, t("page.homepage.analysis_tab"))
+        self.sendline.setPlaceholderText(t("page.homepage.command_input"))
+        self.sendlineButton.setText(t("page.homepage.send_button"))
+        self.toolButton.setText("设\n置")  # 保持不变
+        
+        # 更新右侧面板文本
+        self.right_vertical.update_ui_text()
 
 
     def initUI(self):
@@ -372,22 +386,29 @@ class CommandPanel(QWidget):
         colors = get_theme_colors(is_dark)
         # 这里可以添加更多的样式更新逻辑
 
+    def update_ui_text(self):
+        """更新UI文本（用于语言切换）"""
+        self.refreshPortsButton.setText(t("command_panel.refresh"))
+        self.connectButton.setText(t("command_panel.connect"))
+        self.autosaveCheckBox.setText(t("command_panel.enable"))
+        self.sensorDisplayCheckbox.setText(t("command_panel.dashboard"))
+
     def initUI(self):
         self.gridlayout = QGridLayout(self)
 
         self.selectPortComboBox = QComboBox()
-        self.refreshPortsButton = QPushButton("刷新")
-        self.connectButton = QPushButton("连/断")
+        self.refreshPortsButton = QPushButton(t("command_panel.refresh"))
+        self.connectButton = QPushButton(t("command_panel.connect"))
         self.BaudrateLineEdit = QLineEdit()
-        self.autosaveCheckBox = QCheckBox("启用")
+        self.autosaveCheckBox = QCheckBox(t("command_panel.enable"))
         # self.autosaveIntervalLineEdit = QLineEdit()
-        self.autosaveIntervalButton = QPushButton("设置")
-        self.sensorDisplayCheckbox = QCheckBox("显示仪表盘")
+        self.autosaveIntervalButton = QPushButton(t("command_panel.set"))
+        self.sensorDisplayCheckbox = QCheckBox(t("command_panel.dashboard"))
         self.TextCopy = QTextEdit()
         self.TextCopy.setReadOnly(True)
         
 
-        self.gridlayout.addWidget(QLabel("选择端口"), 0, 0)
+        self.gridlayout.addWidget(QLabel(t("command_panel.select_port")), 0, 0)
         self.gridlayout.addWidget(self.refreshPortsButton, 0, 1)
         self.gridlayout.addWidget(self.selectPortComboBox, 1, 0)
         self.gridlayout.addWidget(self.connectButton, 1, 1)
@@ -396,11 +417,11 @@ class CommandPanel(QWidget):
         self.connectButton.clicked.connect(self.toggleSerialIO)
 
 
-        self.gridlayout.addWidget(QLabel("波特率"), 2, 0)
+        self.gridlayout.addWidget(QLabel(t("command_panel.baudrate")), 2, 0)
         self.gridlayout.addWidget(self.BaudrateLineEdit, 3, 0)
         self.BaudrateLineEdit.setText("9600")  # 默认波特率
 
-        self.gridlayout.addWidget(QLabel("自动保存"), 4, 0)
+        self.gridlayout.addWidget(QLabel(t("command_panel.auto_save")), 4, 0)
         self.gridlayout.addWidget(self.autosaveCheckBox, 4, 1)
         # layout.addWidget(self.autosaveIntervalLineEdit, 5, 0)
         # layout.addWidget(self.autosaveIntervalButton, 5, 1)
@@ -424,7 +445,7 @@ class CommandPanel(QWidget):
             for port in ports:
                 self.selectPortComboBox.addItem(port.device)
         else:
-            self.selectPortComboBox.addItem("无可用串口")
+            self.selectPortComboBox.addItem(t("command_panel.no_ports"))
 
     def toggleSerialIO(self):
         if self.serState:
@@ -472,7 +493,7 @@ class HistoryPage(QWidget):
         self.msg.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
 
         self.dialog = QFileDialog()
-        self.dialog.setWindowTitle("请选择文件夹")
+        self.dialog.setWindowTitle(t("page.history.select_folder"))
         self.dialog.setFileMode(QFileDialog.FileMode.Directory)
         self.dialog.setStyleSheet('''
                     * {
@@ -491,6 +512,17 @@ class HistoryPage(QWidget):
         self.is_dark_theme = is_dark
         # HistoryPage的样式主要由qt_material处理，这里保留接口以保持一致性
     
+    def update_ui_text(self):
+        """更新UI文本（用于语言切换）"""
+        self.browserFileBtn.setText(t("page.history.browse"))
+        self.pathBtnConfirm.setText(t("page.history.retrieve"))
+        self.calendarButton.setText(t("page.history.select_date"))
+        self.DateCheck.setText(t("page.history.enable"))
+        self.tabWidget.setTabText(0, t("page.history.select_data"))
+        self.tabWidget.setTabText(1, t("page.history.preview_data"))
+        self.tabWidget.setTabText(2, t("page.history.analysis_tab"))
+        self.plotBtn.setText(t("page.history.plot_image"))
+    
     def initUI(self):
         nowDir = os.getcwd()
 
@@ -499,10 +531,10 @@ class HistoryPage(QWidget):
         self.pathSaveLineEdit = QLineEdit()
         self.pathSaveLineEdit.setText(f"{nowDir}\\history")
         self.browserFileBtn = QPushButton()
-        self.browserFileBtn.setText("浏览...")
+        self.browserFileBtn.setText(t("page.history.browse"))
         self.browserFileBtn.clicked.connect(self.select_folder)
         self.pathBtnConfirm = QPushButton()
-        self.pathBtnConfirm.setText("检索")
+        self.pathBtnConfirm.setText(t("page.history.retrieve"))
         self.pathBtnConfirm.clicked.connect(self.load_files)
         top_layout.addWidget(self.pathSaveLineEdit,1)
         top_layout.addWidget(self.browserFileBtn)
@@ -511,7 +543,7 @@ class HistoryPage(QWidget):
 
         date_layout = QHBoxLayout()
         self.calendarButton = QPushButton()
-        self.calendarButton.setText("选择日期")
+        self.calendarButton.setText(t("page.history.select_date"))
         self.calendarButton.clicked.connect(self.show_date_picker)
         self.DateLabel = QLineEdit()
         self.DateLabel.setReadOnly(True)
@@ -521,7 +553,7 @@ class HistoryPage(QWidget):
         # self.DayDate = QComboBox()
 
         self.DateCheck = QCheckBox()
-        self.DateCheck.setText("启用")
+        self.DateCheck.setText(t("page.history.enable"))
         date_layout.addWidget(self.calendarButton)
         date_layout.addWidget(self.DateLabel,1)
         # date_layout.addWidget(self.YearDate,1)
@@ -538,18 +570,18 @@ class HistoryPage(QWidget):
         localHistory_tab.setLayout(localHistory_layout)
         self.localListWidget = QListWidget()
         localHistory_layout.addWidget(self.localListWidget)
-        self.tabWidget.addTab(localHistory_tab,"选择数据")
+        self.tabWidget.addTab(localHistory_tab,t("page.history.select_data"))
 
         self.DataPreview_tab = QTableWidget()
         self.DataPreview_tab.setStyleSheet("* {border-radius: 0px;}")
-        self.tabWidget.addTab(self.DataPreview_tab,"预览数据")
+        self.tabWidget.addTab(self.DataPreview_tab,t("page.history.preview_data"))
 
         self.DataAnalysis = AnalysisTab()
         self.DataAnalysis.setStyleSheet("* {border-radius: 0px;}")
-        self.tabWidget.addTab(self.DataAnalysis,"统计")
+        self.tabWidget.addTab(self.DataAnalysis,t("page.history.analysis_tab"))
         
         self.plotBtn = QPushButton()
-        self.plotBtn.setText("绘制图像")
+        self.plotBtn.setText(t("page.history.plot_image"))
         self.plotBtn.clicked.connect(self.plotData)
         main_layout.addWidget(self.plotBtn)
 
@@ -584,7 +616,7 @@ class HistoryPage(QWidget):
         # 弹出文件夹选择对话框
         folder_path = QFileDialog.getExistingDirectory(
             self.dialog,                    # 父窗口
-            "请选择文件夹",           # 标题
+            t("page.history.select_folder"),           # 标题
             last_path,    # 默认打开的路径（上一次选择的路径）
             QFileDialog.DontUseNativeDialog
         )
@@ -594,7 +626,7 @@ class HistoryPage(QWidget):
 
     def show_date_picker(self):
         dialog = QDialog(self)
-        dialog.setWindowTitle("选择日期")
+        dialog.setWindowTitle(t("page.history.select_date"))
         dialog.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
         dialog.setModal(True)
         
@@ -603,7 +635,7 @@ class HistoryPage(QWidget):
         # 可选：默认选中今天
         calendar.setSelectedDate(QDate.currentDate())
         
-        ok_btn = QPushButton("确定")
+        ok_btn = QPushButton(t("page.history.confirm"))
         ok_btn.clicked.connect(lambda: self.on_date_selected(calendar, dialog))
         
         layout = QVBoxLayout(dialog)
@@ -623,7 +655,7 @@ class HistoryPage(QWidget):
         data_files = []
         self.directory = self.pathSaveLineEdit.text().strip()
         if not os.path.isdir(self.directory):
-            self.msg.warning(self.msg, "Error", "无效目录路径")
+            self.msg.warning(self.msg, "Error", t("page.history.invalid_directory"))
             return
 
         self.localListWidget.clear()
@@ -634,7 +666,7 @@ class HistoryPage(QWidget):
             date = '_'.join(self.DateLabel.text().split("-"))
             data_files[:] = [f for f in data_files if f.startswith("localsave_") and f[10:20] == date]
         if not data_files:
-            self.msg.information(self.msg, "Info", "无数据记录")
+            self.msg.information(self.msg, "Info", t("page.history.no_data"))
             return
 
         self.localListWidget.addItems(data_files)
@@ -642,7 +674,7 @@ class HistoryPage(QWidget):
     def plotData(self):
         selected_items = self.localListWidget.selectedItems()
         if not selected_items:
-            self.msg.information(self.msg, "Info", "未选中数据")
+            self.msg.information(self.msg, "Info", t("page.history.no_data_selected"))
             return
 
         selected_file = selected_items[0].text()
@@ -703,6 +735,7 @@ class SettingsPage(QWidget):
     pathSaveSignal = Signal(str)
     styleSignal = Signal(str)
     themeColorsChangedSignal = Signal(bool)  # True表示深色主题，False表示浅色主题
+    languageChangedSignal = Signal(str)  # 语言改变信号
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -712,7 +745,7 @@ class SettingsPage(QWidget):
         load_theme_colors()
 
         self.dialog = QFileDialog()
-        self.dialog.setWindowTitle("请选择文件夹")
+        self.dialog.setWindowTitle(t("page.settings.title"))
         self.dialog.setFileMode(QFileDialog.FileMode.Directory)
         self.dialog.setStyleSheet('''
                     * {
@@ -730,6 +763,33 @@ class SettingsPage(QWidget):
         """更新主题样式"""
         self.is_dark_theme = is_dark
         # SettingsPage的样式主要由qt_material处理，这里保留接口以保持一致性
+    
+    def update_ui_text(self):
+        """更新所有UI文本"""
+        # 更新对话框标题
+        self.dialog.setWindowTitle(t("page.settings.title"))
+        
+        # 更新路径相关按钮
+        self.browserFileBtn.setText(t("page.settings.browse"))
+        self.pathBtn.setText(t("page.settings.set"))
+        
+        # 更新样式应用按钮
+        self.styleApply.setText(t("page.settings.apply"))
+        
+        # 更新重置按钮
+        self.resetColorBtn.setText(t("page.settings.reset_colors"))
+        
+        # 更新主题编辑标签
+        self.themeEditLabel.setText(t("page.settings.edit_theme"))
+        
+        # 更新颜色标签
+        self.colorLabel.setText(t("page.settings.custom_colors"))
+        
+        # 更新语言选择标签和按钮
+        self.languageLabel.setText(t("page.settings.language"))
+        
+        # 重新创建颜色面板以更新标签
+        self.create_color_panel()
 
     def initUI(self):
         main_layout = QVBoxLayout(self)
@@ -738,18 +798,41 @@ class SettingsPage(QWidget):
         path_layout = QGridLayout()
         nowDir = os.getcwd()
 
-        pathLabel = QLabel("数据保存目录")
+        pathLabel = QLabel(t("page.settings.save_directory"))
         self.pathLineEdit = QLineEdit()
         self.pathLineEdit.setText(f"{nowDir}\\history")
-        self.browserFileBtn = QPushButton("浏览...")
+        self.browserFileBtn = QPushButton(t("page.settings.browse"))
         self.browserFileBtn.clicked.connect(self.select_folder)
-        self.pathBtn = QPushButton("设置")
+        self.pathBtn = QPushButton(t("page.settings.set"))
         self.pathBtn.clicked.connect(self.on_pathBtn_click)
         path_layout.addWidget(pathLabel, 0, 0)
         path_layout.addWidget(self.pathLineEdit, 1, 0)
         path_layout.addWidget(self.browserFileBtn, 1, 1)
         path_layout.addWidget(self.pathBtn, 1, 2)
         main_layout.addLayout(path_layout)
+
+        # ===== 语言选择部分 =====
+        language_layout = QGridLayout()
+        self.languageLabel = QLabel(t("page.settings.language"))
+        self.languageCombo = QComboBox()
+        
+        # 获取支持的语言
+        supported_langs = get_supported_languages()
+        for lang_code, lang_name in supported_langs.items():
+            self.languageCombo.addItem(lang_name, lang_code)
+        
+        # 设置当前语言
+        current_lang = get_current_language()
+        for i in range(self.languageCombo.count()):
+            if self.languageCombo.itemData(i) == current_lang:
+                self.languageCombo.setCurrentIndex(i)
+                break
+        
+        self.languageCombo.currentIndexChanged.connect(self.on_language_changed)
+        language_layout.addWidget(self.languageLabel, 0, 0)
+        language_layout.addWidget(self.languageCombo, 0, 1)
+        language_layout.setColumnStretch(1,1)
+        main_layout.addLayout(language_layout)
 
         # ===== qt_material主题部分 =====
         style_layout = QGridLayout()
@@ -787,23 +870,24 @@ class SettingsPage(QWidget):
         self.styleCombobox.addItems(style_dict.keys())
         self.styleCombobox.setStyleSheet("QComboBox { combobox-popup: 0; }")
         self.styleCombobox.setMaxVisibleItems(8)
-        self.styleApply = QPushButton("应用")
+        self.styleApply = QPushButton(t("page.settings.apply"))
         self.styleApply.clicked.connect(lambda: self.styleSignal.emit(style_dict[self.styleCombobox.currentText()]))
-        style_layout.addWidget(QLabel("Material主题"), 0, 0)
+        style_layout.addWidget(QLabel(t("page.settings.material_theme")), 0, 0)
         style_layout.addWidget(self.styleCombobox, 1, 0)
         style_layout.addWidget(self.styleApply, 1, 1)
         main_layout.addLayout(style_layout)
 
         # ===== 自定义颜色部分 =====
-        color_label = QLabel("自定义主题颜色")
-        color_label.setStyleSheet("font-weight: bold; font-size: 12px; margin-top: 10px;")
-        main_layout.addWidget(color_label)
+        self.colorLabel = QLabel(t("page.settings.custom_colors"))
+        self.colorLabel.setStyleSheet("font-weight: bold; font-size: 12px; margin-top: 10px;")
+        main_layout.addWidget(self.colorLabel)
 
         # 选择要编辑的主题
         theme_layout = QHBoxLayout()
-        theme_layout.addWidget(QLabel("编辑主题:"))
+        self.themeEditLabel = QLabel(t("page.settings.edit_theme"))
+        theme_layout.addWidget(self.themeEditLabel)
         self.themeTypeCombo = QComboBox()
-        self.themeTypeCombo.addItems(["深色主题", "浅色主题"])
+        self.themeTypeCombo.addItems([t("page.settings.dark_theme"), t("page.settings.light_theme")])
         self.themeTypeCombo.setMinimumWidth(150)
         self.themeTypeCombo.currentIndexChanged.connect(self.on_theme_type_changed)
         theme_layout.addWidget(self.themeTypeCombo)
@@ -819,7 +903,7 @@ class SettingsPage(QWidget):
         # 重置按钮
         reset_layout = QHBoxLayout()
         reset_layout.addStretch()
-        self.resetColorBtn = QPushButton("重置为默认颜色")
+        self.resetColorBtn = QPushButton(t("page.settings.reset_colors"))
         self.resetColorBtn.clicked.connect(self.reset_theme_colors)
         reset_layout.addWidget(self.resetColorBtn)
         main_layout.addLayout(reset_layout)
@@ -840,10 +924,10 @@ class SettingsPage(QWidget):
         current_colors = dark_theme_colors if is_dark else light_theme_colors
         
         color_names = ["Background", "Surface", "Text_Primary", "Text_Secondary", "Accent", "Border_Hover"]
-        color_labels = ["背景色", "表面色", "主文本色", "副文本色", "强调色", "悬停边框色"]
+        color_label_keys = ["color.background", "color.surface", "color.text_primary", "color.text_secondary", "color.accent", "color.border_hover"]
         
-        for i, (color_key, color_label) in enumerate(zip(color_names, color_labels)):
-            label = QLabel(color_label)
+        for i, (color_key, color_label_key) in enumerate(zip(color_names, color_label_keys)):
+            label = QLabel(t(color_label_key))
             label.setMinimumWidth(80)
             
             # 创建颜色按钮
@@ -902,6 +986,12 @@ class SettingsPage(QWidget):
     def on_theme_type_changed(self):
         """处理主题类型改变"""
         self.create_color_panel()
+    
+    def on_language_changed(self, index):
+        """处理语言改变"""
+        language_code = self.languageCombo.itemData(index)
+        if set_language(language_code):
+            self.languageChangedSignal.emit(language_code)
 
     def reset_theme_colors(self):
         """重置主题颜色为默认值"""
@@ -939,6 +1029,11 @@ class AnalysisTab(QWidget):
         """更新主题样式"""
         self.is_dark_theme = is_dark
         # AnalysisTab的样式主要由qt_material处理，这里保留接口以保持一致性
+
+    def update_ui_text(self):
+        """更新UI文本（用于语言切换）"""
+        # 这个方法保留以备后用
+        pass
 
     def initUI(self):
         self.main_layout = QVBoxLayout(self)
@@ -992,6 +1087,14 @@ class LogPage(QWidget):
         """更新主题样式"""
         self.is_dark_theme = is_dark
         # LogPage的样式主要由qt_material处理，这里保留接口以保持一致性
+
+    def update_ui_text(self):
+        """更新UI文本（用于语言切换）"""
+        self.levelNames = [t("page.log.error"), t("page.log.warning"), t("page.log.info")]
+        self.LogLevelLabel.setText(f'{t("page.log.level")}{self.levelNames[self.LogLevel]}')
+        self.LogLevelToggleBtn.setText(t("page.log.toggle"))
+        self.LogLevelToggleBtn.setToolTip(t("page.log.toggle_tooltip"))
+        self.clearBtn.setText(t("page.log.clear"))
 
     def initUI(self):
         layout = QVBoxLayout(self)

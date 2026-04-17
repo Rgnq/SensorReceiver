@@ -1,0 +1,83 @@
+{
+  "page": {
+    "homepage": {
+      "title": "Home",
+      "mpu6050": "MPU6050",
+      "gas_sensor": "Gas Sensor",
+      "thp_sensor": "Temperature & Humidity & Pressure",
+      "plot_toggle": "Show/Hide Chart",
+      "plot_tab": "Plot",
+      "analysis_tab": "Analysis",
+      "command_input": "Enter command and press Enter to send",
+      "send_button": "Send",
+      "not_connected": "Not connected",
+      "temperature": "Temperature",
+      "humidity": "Humidity",
+      "pressure": "Pressure"
+    },
+    "history": {
+      "title": "History",
+      "browse": "Browse...",
+      "retrieve": "Retrieve",
+      "select_date": "Select Date",
+      "enable": "Enable",
+      "select_data": "Select Data",
+      "preview_data": "Preview Data",
+      "plot_image": "Plot Image",
+      "no_data": "No data records",
+      "not_selected": "No data selected",
+      "invalid_directory": "Invalid directory path",
+      "error_loading": "Failed to load data"
+    },
+    "settings": {
+      "title": "Settings",
+      "save_directory": "Data Save Directory",
+      "browse": "Browse...",
+      "set": "Set",
+      "material_theme": "Material Theme",
+      "apply": "Apply",
+      "custom_colors": "Custom Theme Colors",
+      "edit_theme": "Edit Theme:",
+      "dark_theme": "Dark Theme",
+      "light_theme": "Light Theme",
+      "reset_colors": "Reset to Default Colors",
+      "reset_success": "Reset to default colors",
+      "language": "Language",
+      "select_language": "Select Language"
+    },
+    "log": {
+      "title": "Log",
+      "error": "Error",
+      "warning": "Warning",
+      "info": "Info",
+      "level": "Log Level:",
+      "toggle": "Toggle",
+      "clear": "Clear",
+      "toggle_tooltip": "Toggle log filter level"
+    }
+  },
+  "command_panel": {
+    "title": "Settings",
+    "select_port": "Select Port",
+    "refresh": "Refresh",
+    "connect": "Connect/Disconnect",
+    "baudrate": "Baudrate",
+    "auto_save": "Auto Save",
+    "enable": "Enable",
+    "dashboard": "Show Dashboard",
+    "no_port": "No available ports"
+  },
+  "color": {
+    "background": "Background",
+    "surface": "Surface",
+    "text_primary": "Primary Text",
+    "text_secondary": "Secondary Text",
+    "accent": "Accent",
+    "border_hover": "Border Hover"
+  },
+  "error": {
+    "title": "Error",
+    "error": "Error",
+    "failed_to_load": "Failed to load data: "
+  }
+}

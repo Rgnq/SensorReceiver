@@ -5,6 +5,7 @@ from PySide6.QtGui import QGuiApplication, QTextCursor
 from Sidebar import Sidebar
 from Menubar import Menubar
 from Pages import Homepage, HistoryPage, SettingsPage, LogPage
+from i18n import t
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -77,22 +78,22 @@ class MainWindow(QMainWindow):
         content_layout.addWidget(self.stacked_widget,1)
 
     def initPages(self):
-        self.pages_names = ["实时数据", "历史记录", "日志", "设置"]
+        self.pages_names = [t("page.homepage.title"), t("page.history.title"), t("page.log.title"), t("page.settings.title")]
         self.pages_icons = {
-            "实时数据": self.style().standardIcon(QStyle.SP_FileDialogDetailedView),
-            "历史记录": self.style().standardIcon(QStyle.SP_DirHomeIcon),
-            "日志": self.style().standardIcon(QStyle.SP_TrashIcon),
-            "设置": self.style().standardIcon(QStyle.SP_MessageBoxInformation)
+            t("page.homepage.title"): self.style().standardIcon(QStyle.SP_FileDialogDetailedView),
+            t("page.history.title"): self.style().standardIcon(QStyle.SP_DirHomeIcon),
+            t("page.log.title"): self.style().standardIcon(QStyle.SP_TrashIcon),
+            t("page.settings.title"): self.style().standardIcon(QStyle.SP_MessageBoxInformation)
         }
         self.Homepage = Homepage()
         self.HistoryPage = HistoryPage()
         self.SettingsPage = SettingsPage()
         self.LogPage = LogPage()
         self.pages = {
-            "实时数据": self.Homepage,
-            "历史记录": self.HistoryPage,
-            "日志": self.LogPage,
-            "设置": self.SettingsPage
+            t("page.homepage.title"): self.Homepage,
+            t("page.history.title"): self.HistoryPage,
+            t("page.log.title"): self.LogPage,
+            t("page.settings.title"): self.SettingsPage
         }
 
 
@@ -147,7 +148,27 @@ class MainWindow(QMainWindow):
         frame_geo.moveCenter(center_point)
         # 应用新位置（只移动左上角坐标）
         self.move(frame_geo.topLeft())
+    
+    def update_ui_text(self):
+        """更新所有页面的UI文本（用于语言切换）"""
+        # 更新页面名称
+        self.pages_names = [t("page.homepage.title"), t("page.history.title"), t("page.log.title"), t("page.settings.title")]
         
+        # 更新侧边栏按钮文本
+        for i, button in enumerate(self.sidebar.buttons):
+            button.setText(self.pages_names[i])
+            button.original_text = self.pages_names[i]
+            if not self.sidebar.sidebar_expanded:
+                button.setText("")  # 如果侧边栏处于收起状态，隐藏文本
+        
+        # 更新菜单栏标题
+        self.menubar.title.setText(self.pages_names[self.stacked_widget.currentIndex()])
+        
+        # 更新各页面的UI文本
+        self.Homepage.update_ui_text()
+        self.HistoryPage.update_ui_text()
+        self.SettingsPage.update_ui_text()
+        self.LogPage.update_ui_text()
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.setSidebarGeometry()
