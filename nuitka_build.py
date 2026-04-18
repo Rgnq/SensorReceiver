@@ -40,7 +40,7 @@ def prepare_resources():
     
     return True
 
-def build_with_nuitka(standalone=True, onefile=False, compiler="mingw64"):
+def build_with_nuitka(standalone=True, onefile=True, compiler="mingw64"):
     """
     使用 Nuitka 构建
     
@@ -104,8 +104,8 @@ def build_with_nuitka(standalone=True, onefile=False, compiler="mingw64"):
         cmd.append(f"--windows-icon-from-ico={icon_path}")
     
     # 独立版本
-    if standalone:
-        cmd.append("--standalone")
+    # if standalone:
+    #     cmd.append("--standalone")
     
     # 显示进度和内存信息
     cmd.extend([
@@ -113,8 +113,8 @@ def build_with_nuitka(standalone=True, onefile=False, compiler="mingw64"):
         "--show-memory",    # 显示内存使用情况
     ])
     
-    # 优化选项
-    cmd.append("-O")  # 优化级别
+    # # 优化选项
+    # cmd.append("-O")  # 优化级别
     
     # 主脚本
     cmd.append("main.py")
