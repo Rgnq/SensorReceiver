@@ -820,6 +820,7 @@ class SettingsPage(QWidget):
         
         # 更新语言选择标签和按钮
         self.languageLabel.setText(t("page.settings.language"))
+        self.exportLanguageBtn.setText(t("page.settings.export_language"))
         
         # 重新创建颜色面板以更新标签
         self.create_color_panel()
@@ -845,7 +846,7 @@ class SettingsPage(QWidget):
         main_layout.addLayout(path_layout)
 
         # ===== 语言选择部分 =====
-        language_layout = QGridLayout()
+        language_layout = QHBoxLayout()
         self.languageLabel = QLabel(t("page.settings.language"))
         self.languageCombo = QComboBox()
         
@@ -862,42 +863,48 @@ class SettingsPage(QWidget):
                 break
         
         self.languageCombo.currentIndexChanged.connect(self.on_language_changed)
-        language_layout.addWidget(self.languageLabel, 0, 0)
-        language_layout.addWidget(self.languageCombo, 0, 1)
-        language_layout.setColumnStretch(1,1)
+        
+        # 导出语言文件按钮
+        self.exportLanguageBtn = QPushButton(t("page.settings.export_language"))
+        self.exportLanguageBtn.clicked.connect(self.on_export_language_clicked)
+        
+        language_layout.addWidget(self.languageLabel)
+        language_layout.addWidget(self.languageCombo,1)
+        language_layout.addWidget(self.exportLanguageBtn)
+        language_layout.addStretch()
         main_layout.addLayout(language_layout)
 
         # ===== qt_material主题部分 =====
         style_layout = QGridLayout()
         self.styleCombobox = QComboBox()
         style_dict = {
-            '深琥珀'     : 'dark_amber.xml',
-            '深蓝'       : 'dark_blue.xml',
-            '深青'       : 'dark_cyan.xml',
-            '深浅绿'     : 'dark_lightgreen.xml',
-            '深粉'       : 'dark_pink.xml',
-            '深紫'       : 'dark_purple.xml',
-            '深红'       : 'dark_red.xml',
-            '深青绿'     : 'dark_teal.xml',
-            '深黄'       : 'dark_yellow.xml',
+            'Dark Amber'     : 'dark_amber.xml',
+            'Dark Blue'       : 'dark_blue.xml',
+            'Dark Cyan'       : 'dark_cyan.xml',
+            'Dark Light Green'     : 'dark_lightgreen.xml',
+            'Dark Pink'       : 'dark_pink.xml',
+            'Dark Purple'       : 'dark_purple.xml',
+            'Dark Red'       : 'dark_red.xml',
+            'Dark Teal'     : 'dark_teal.xml',
+            'Dark Yellow'       : 'dark_yellow.xml',
             
-            '浅琥珀'     : 'light_amber.xml',
-            '浅蓝'       : 'light_blue.xml',
-            '鲜浅蓝'   : 'light_blue_500.xml',
-            '浅青'       : 'light_cyan.xml',
-            '鲜浅青'   : 'light_cyan_500.xml',
-            '浅绿'       : 'light_lightgreen.xml',
-            '鲜浅绿'   : 'light_lightgreen_500.xml',
-            '浅橙'       : 'light_orange.xml',
-            '浅粉'       : 'light_pink.xml',
-            '鲜鲜浅粉'   : 'light_pink_500.xml',
-            '浅紫'       : 'light_purple.xml',
-            '鲜浅紫'   : 'light_purple_500.xml',
-            '浅红'       : 'light_red.xml',
-            '鲜浅红'   : 'light_red_500.xml',
-            '浅青绿'     : 'light_teal.xml',
-            '鲜浅青绿' : 'light_teal_500.xml',
-            '浅黄'       : 'light_yellow.xml',
+            'Light Amber'     : 'light_amber.xml',
+            'Light Blue'       : 'light_blue.xml',
+            'Light Blue 500'   : 'light_blue_500.xml',
+            'Light Cyan'       : 'light_cyan.xml',
+            'Light Cyan 500'   : 'light_cyan_500.xml',
+            'Light Light Green'       : 'light_lightgreen.xml',
+            'Light Light Green 500'   : 'light_lightgreen_500.xml',
+            'Light Orange'       : 'light_orange.xml',
+            'Light Pink'       : 'light_pink.xml',
+            'Light Pink 500'   : 'light_pink_500.xml',
+            'Light Purple'       : 'light_purple.xml',
+            'Light Purple 500'   : 'light_purple_500.xml',
+            'Light Red'       : 'light_red.xml',
+            'Light Red 500'   : 'light_red_500.xml',
+            'Light Teal'     : 'light_teal.xml',
+            'Light Teal 500' : 'light_teal_500.xml',
+            'Light Yellow'       : 'light_yellow.xml',
         }
         self.style_dict = style_dict
         self.styleCombobox.addItems(style_dict.keys())
@@ -908,6 +915,7 @@ class SettingsPage(QWidget):
         style_layout.addWidget(QLabel(t("page.settings.material_theme")), 0, 0)
         style_layout.addWidget(self.styleCombobox, 1, 0)
         style_layout.addWidget(self.styleApply, 1, 1)
+        style_layout.setColumnStretch(0, 1)
         main_layout.addLayout(style_layout)
 
         # ===== 自定义颜色部分 =====
@@ -996,7 +1004,7 @@ class SettingsPage(QWidget):
         color = QColorDialog.getColor(
             QColor(current_color),
             self,
-            f"选择{color_key}颜色"
+            t("color.select_color_title", color_key)
         )
         
         if color.isValid():
@@ -1025,6 +1033,27 @@ class SettingsPage(QWidget):
         language_code = self.languageCombo.itemData(index)
         if set_language(language_code):
             self.languageChangedSignal.emit(language_code)
+    
+    def on_export_language_clicked(self):
+        """处理导出语言文件按钮点击"""
+        from i18n import export_language_file, get_current_language
+        
+        current_lang = get_current_language()
+        lang_name = self.languageCombo.currentText()
+        
+        # 弹出保存文件对话框
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            t("page.settings.export_dialog_title", lang_name),
+            f"{current_lang}.json",
+            t("error.json_filter")
+        )
+        
+        if file_path:
+            if export_language_file(current_lang, file_path):
+                QMessageBox.information(self, t("error.export_success"), f"{t('error.export_message')}\n{file_path}")
+            else:
+                QMessageBox.warning(self, t("error.title"), t("error.export_failed"))
 
     def reset_theme_colors(self):
         """重置主题颜色为默认值"""
@@ -1032,7 +1061,7 @@ class SettingsPage(QWidget):
         reset_theme_colors(is_dark)
         self.create_color_panel()
         self.themeColorsChangedSignal.emit(is_dark)
-        QMessageBox.information(self, "提示", "已重置为默认颜色")
+        QMessageBox.information(self, t("page.settings.reset_message_title"), t("page.settings.reset_success"))
 
     def on_pathBtn_click(self):
         directory = self.pathLineEdit.text().strip()
@@ -1043,7 +1072,7 @@ class SettingsPage(QWidget):
         # 弹出文件夹选择对话框
         folder_path = QFileDialog.getExistingDirectory(
             self.dialog,                    # 父窗口
-            "请选择文件夹",           # 标题
+            t("page.settings.select_folder_title"),           # 标题
             last_path,    # 默认打开的路径（上一次选择的路径）
             QFileDialog.DontUseNativeDialog
         )
@@ -1099,6 +1128,8 @@ class AnalysisTab(QWidget):
         
         self.dataNames = dataNames
         self.valueNames = valueNames
+        totalwidth = self.size().width()
+        columnwidth = totalwidth//len(valueNames)
         
         self.dataTable = QTableWidget()
         self.dataTable.setRowCount(30)
@@ -1106,6 +1137,8 @@ class AnalysisTab(QWidget):
         self.dataTable.setHorizontalHeaderLabels([*valueNames,*['' for i in range(27)]])
         self.dataTable.setVerticalHeaderLabels([*dataNames,*['' for i in range(19)]])
         self.dataTable.resizeColumnsToContents()
+        for i in range(len(valueNames)):
+            self.dataTable.setColumnWidth(i, columnwidth)
         self.dataTable.setEditTriggers(self.dataTable.editTriggers().NoEditTriggers)
         self.main_layout.addWidget(self.dataTable)
 

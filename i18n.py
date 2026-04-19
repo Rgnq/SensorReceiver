@@ -5,6 +5,7 @@
 import json
 import os
 import sys
+import shutil
 from typing import Dict, Any
 from pathlib import Path
 
@@ -22,16 +23,23 @@ def _get_base_path():
     
     支持两种模式：
     1. 开发模式：使用项目目录
-    2. Nuitka 打包模式：使用可执行文件所在目录
+    2. Nuitka 打包模式：优先使用可执行文件目录，如果没有i18n目录则使用打包内资源
     """
-    # 检查是否为 Nuitka 打包版本
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        # PyInstaller 模式
-        return sys._MEIPASS
-    elif getattr(sys, 'frozen', False):
-        # Nuitka 模式
-        # Nuitka 打包的资源会放在可执行文件所在目录
-        return os.path.dirname(sys.executable)
+    if getattr(sys, 'frozen', False):
+        # 打包模式
+        exe_dir = os.path.dirname(sys.executable)
+        
+        # 检查可执行文件目录是否有i18n目录，如果有则优先使用外部文件
+        if os.path.exists(os.path.join(exe_dir, "i18n")):
+            return exe_dir
+        
+        # 否则使用打包内的资源
+        if hasattr(sys, '_MEIPASS'):
+            # PyInstaller
+            return sys._MEIPASS
+        else:
+            # Nuitka 或其他
+            return exe_dir
     else:
         # 开发模式：使用脚本所在目录
         return os.path.dirname(os.path.abspath(__file__))
@@ -39,6 +47,20 @@ def _get_base_path():
 _BASE_PATH = _get_base_path()
 I18N_DIR = os.path.join(_BASE_PATH, "i18n")
 LANGUAGE_CONFIG = os.path.join(_BASE_PATH, "config", "language.json")
+
+
+def _get_packaged_i18n_path():
+    """获取打包内的i18n路径（用于fallback）"""
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # PyInstaller
+        return os.path.join(sys._MEIPASS, "i18n")
+    elif getattr(sys, 'frozen', False):
+        # Nuitka - 资源应该在exe_dir，但如果没有外部覆盖，则可能不存在
+        exe_dir = os.path.dirname(sys.executable)
+        return os.path.join(exe_dir, "i18n")
+    else:
+        # 开发模式
+        return I18N_DIR
 
 
 def ensure_i18n_dir():
@@ -60,6 +82,7 @@ def load_language(language_code: str):
     ensure_i18n_dir()
     language_file = os.path.join(I18N_DIR, f"{language_code}.json")
     
+    # 首先尝试从当前BASE_PATH加载
     if os.path.exists(language_file):
         try:
             with open(language_file, 'r', encoding='utf-8') as f:
@@ -69,7 +92,21 @@ def load_language(language_code: str):
                 return True
         except Exception as e:
             print(f"Error loading language file {language_file}: {e}")
-            return False
+    
+    # 如果不存在，尝试从打包内路径加载（fallback）
+    packaged_i18n_dir = _get_packaged_i18n_path()
+    if packaged_i18n_dir != I18N_DIR:
+        packaged_file = os.path.join(packaged_i18n_dir, f"{language_code}.json")
+        if os.path.exists(packaged_file):
+            try:
+                with open(packaged_file, 'r', encoding='utf-8') as f:
+                    _translations = json.load(f)
+                    _current_language = language_code
+                    save_language_preference(language_code)
+                    return True
+            except Exception as e:
+                print(f"Error loading packaged language file {packaged_file}: {e}")
+    
     return False
 
 
@@ -179,9 +216,18 @@ def create_default_translations():
                 "command_input": "输入命令并按回车发送",
                 "send_button": "发送",
                 "not_connected": "尚未连接",
+                "ax": "加速度X",
+                "ay": "加速度Y",
+                "az": "加速度Z",
+                "gx": "陀螺仪X",
+                "gy": "陀螺仪Y",
+                "gz": "陀螺仪Z",
+                "co2": "CO2",
+                "tvoc": "TVOC",
                 "temperature": "温度",
                 "humidity": "湿度",
-                "pressure": "压强"
+                "pressure": "压强",
+                "settings": "设\n置"
             },
             "history": {
                 "title": "历史",
@@ -195,7 +241,8 @@ def create_default_translations():
                 "no_data": "无数据记录",
                 "not_selected": "未选中数据",
                 "invalid_directory": "无效目录路径",
-                "error_loading": "加载数据失败"
+                "error_loading": "加载数据失败",
+                "analysis_tab": "分析"
             },
             "settings": {
                 "title": "设置",
@@ -211,7 +258,16 @@ def create_default_translations():
                 "reset_colors": "重置为默认颜色",
                 "reset_success": "已重置为默认颜色",
                 "language": "语言",
-                "select_language": "选择语言"
+                "select_language": "选择语言",
+                "export_language": "导出语言文件",
+                "reset_message_title": "提示",
+                "select_folder_title": "请选择文件夹",
+                "export_dialog_title": "导出 {0} 语言文件"
+            },
+            "analysis": {
+                "mean": "平均值",
+                "median": "中位数",
+                "std_dev": "标准差"
             },
             "log": {
                 "title": "日志",
@@ -233,7 +289,7 @@ def create_default_translations():
             "auto_save": "自动保存",
             "enable": "启用",
             "dashboard": "显示仪表盘",
-            "no_port": "无可用串口"
+            "no_ports": "无可用串口"
         },
         "color": {
             "background": "背景色",
@@ -241,12 +297,17 @@ def create_default_translations():
             "text_primary": "主文本色",
             "text_secondary": "副文本色",
             "accent": "强调色",
-            "border_hover": "悬停边框色"
+            "border_hover": "悬停边框色",
+            "select_color_title": "选择{0}颜色"
         },
         "error": {
             "title": "错误",
             "error": "错误",
-            "failed_to_load": "加载数据失败："
+            "failed_to_load": "加载数据失败：",
+            "export_success": "成功",
+            "export_failed": "导出语言文件失败",
+            "export_message": "语言文件已导出到:",
+            "json_filter": "JSON 文件 (*.json)"
         }
     }
     
@@ -264,9 +325,18 @@ def create_default_translations():
                 "command_input": "Enter command and press Enter to send",
                 "send_button": "Send",
                 "not_connected": "Not connected",
+                "ax": "Accel X",
+                "ay": "Accel Y",
+                "az": "Accel Z",
+                "gx": "Gyro X",
+                "gy": "Gyro Y",
+                "gz": "Gyro Z",
+                "co2": "CO2",
+                "tvoc": "TVOC",
                 "temperature": "Temperature",
                 "humidity": "Humidity",
-                "pressure": "Pressure"
+                "pressure": "Pressure",
+                "settings": "S\ne\nt\nt\ni\nn\ng"
             },
             "history": {
                 "title": "History",
@@ -280,7 +350,8 @@ def create_default_translations():
                 "no_data": "No data records",
                 "not_selected": "No data selected",
                 "invalid_directory": "Invalid directory path",
-                "error_loading": "Failed to load data"
+                "error_loading": "Failed to load data",
+                "analysis_tab": "Analysis"
             },
             "settings": {
                 "title": "Settings",
@@ -296,7 +367,16 @@ def create_default_translations():
                 "reset_colors": "Reset to Default Colors",
                 "reset_success": "Reset to default colors",
                 "language": "Language",
-                "select_language": "Select Language"
+                "select_language": "Select Language",
+                "export_language": "Export Language File",
+                "reset_message_title": "Information",
+                "select_folder_title": "Select Folder",
+                "export_dialog_title": "Export {0} Language File"
+            },
+            "analysis": {
+                "mean": "Mean",
+                "median": "Median",
+                "std_dev": "Std Dev"
             },
             "log": {
                 "title": "Log",
@@ -318,7 +398,7 @@ def create_default_translations():
             "auto_save": "Auto Save",
             "enable": "Enable",
             "dashboard": "Show Dashboard",
-            "no_port": "No available ports"
+            "no_ports": "No available ports"
         },
         "color": {
             "background": "Background",
@@ -326,12 +406,17 @@ def create_default_translations():
             "text_primary": "Primary Text",
             "text_secondary": "Secondary Text",
             "accent": "Accent",
-            "border_hover": "Border Hover"
+            "border_hover": "Border Hover",
+            "select_color_title": "Select {0} Color"
         },
         "error": {
             "title": "Error",
             "error": "Error",
-            "failed_to_load": "Failed to load data: "
+            "failed_to_load": "Failed to load data: ",
+            "export_success": "Success",
+            "export_failed": "Export language file failed",
+            "export_message": "Language file exported to:",
+            "json_filter": "JSON Files (*.json)"
         }
     }
     
@@ -348,3 +433,28 @@ def create_default_translations():
     if not os.path.exists(en_file):
         with open(en_file, 'w', encoding='utf-8') as f:
             json.dump(en_translations, f, ensure_ascii=False, indent=2)
+
+
+def export_language_file(language_code: str, export_path: str):
+    """导出指定语言的翻译文件
+    
+    Args:
+        language_code: 语言代码 (e.g., 'zh_CN', 'en_US')
+        export_path: 导出文件路径
+    
+    Returns:
+        bool: 导出是否成功
+    """
+    if language_code not in _supported_languages:
+        return False
+    
+    language_file = os.path.join(I18N_DIR, f"{language_code}.json")
+    
+    if os.path.exists(language_file):
+        try:
+            shutil.copy2(language_file, export_path)
+            return True
+        except Exception as e:
+            print(f"Error exporting language file: {e}")
+            return False
+    return False

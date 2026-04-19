@@ -5,20 +5,20 @@
       "mpu6050": "MPU6050",
       "gas_sensor": "气体传感器",
       "thp_sensor": "温湿压传感器",
-      "ax": "AX",
-      "ay": "AY",
-      "az": "AZ",
-      "gx": "GX",
-      "gy": "GY",
-      "gz": "GZ",
-      "co2": "CO2",
-      "tvoc": "TVOC",
       "plot_toggle": "显示/隐藏图表",
       "plot_tab": "图像",
       "analysis_tab": "统计",
       "command_input": "输入命令并按回车发送",
       "send_button": "发送",
       "not_connected": "尚未连接",
+      "ax": "加速度X",
+      "ay": "加速度Y",
+      "az": "加速度Z",
+      "gx": "陀螺仪X",
+      "gy": "陀螺仪Y",
+      "gz": "陀螺仪Z",
+      "co2": "CO2",
+      "tvoc": "TVOC",
       "temperature": "温度",
       "humidity": "湿度",
       "pressure": "压强",
@@ -36,7 +36,8 @@
       "no_data": "无数据记录",
       "not_selected": "未选中数据",
       "invalid_directory": "无效目录路径",
-      "error_loading": "加载数据失败"
+      "error_loading": "加载数据失败",
+      "analysis_tab": "分析"
     },
     "settings": {
       "title": "设置",
@@ -52,7 +53,16 @@
       "reset_colors": "重置为默认颜色",
       "reset_success": "已重置为默认颜色",
       "language": "语言",
-      "select_language": "选择语言"
+      "select_language": "选择语言",
+      "export_language": "导出语言文件",
+      "reset_message_title": "提示",
+      "select_folder_title": "请选择文件夹",
+      "export_dialog_title": "导出 {0} 语言文件"
+    },
+    "analysis": {
+      "mean": "平均值",
+      "median": "中位数",
+      "std_dev": "标准差"
     },
     "log": {
       "title": "日志",
@@ -63,11 +73,6 @@
       "toggle": "切换",
       "clear": "清空",
       "toggle_tooltip": "切换日志过滤等级"
-    },
-    "analysis": {
-      "mean": "平均值",
-      "median": "中位数",
-      "std_dev": "标准差"
     }
   },
   "command_panel": {
@@ -79,7 +84,7 @@
     "auto_save": "自动保存",
     "enable": "启用",
     "dashboard": "显示仪表盘",
-    "no_port": "无可用串口"
+    "no_ports": "无可用串口"
   },
   "color": {
     "background": "背景色",
@@ -87,11 +92,16 @@
     "text_primary": "主文本色",
     "text_secondary": "副文本色",
     "accent": "强调色",
-    "border_hover": "悬停边框色"
+    "border_hover": "悬停边框色",
+    "select_color_title": "选择{0}颜色"
   },
   "error": {
     "title": "错误",
     "error": "错误",
-    "failed_to_load": "加载数据失败："
+    "failed_to_load": "加载数据失败：",
+    "export_success": "成功",
+    "export_failed": "导出语言文件失败",
+    "export_message": "语言文件已导出到:",
+    "json_filter": "JSON 文件 (*.json)"
   }
 }
