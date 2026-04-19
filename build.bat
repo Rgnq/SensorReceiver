@@ -1,0 +1,1 @@
+python -m nuitka --mingw64 --onefile --nofollow-import-to=matplotlib --follow-imports --output-dir=build/ --remove-output --include-module=PySide6.QtOpenGL --enable-plugin=pyside6 --show-progress --show-memory --windows-disable-console --windows-icon-from-ico=./icon.ico main.py
