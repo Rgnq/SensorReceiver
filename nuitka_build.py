@@ -17,11 +17,11 @@ def get_project_root():
 
 def get_build_dir():
     """获取构建输出目录"""
-    return get_project_root() / "build" / "nuitka"
+    return get_project_root() / "output" / "build" / "nuitka"
 
 def get_dist_dir():
     """获取发布输出目录"""
-    return get_project_root() / "dist"
+    return get_project_root() / "output" / "dist"
 
 def prepare_resources():
     """准备资源文件"""
