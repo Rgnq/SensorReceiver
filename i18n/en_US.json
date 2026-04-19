@@ -41,19 +41,7 @@
       "error_loading": "Failed to load data",
       "analysis_tab": "Analysis",
       "select_folder": "Select Folder",
-      "confirm": "OK",
-      "time": "Time",
-      "ax": "AX",
-      "ay": "AY",
-      "az": "AZ",
-      "gx": "GX",
-      "gy": "GY",
-      "gz": "GZ",
-      "co2": "CO2",
-      "tvoc": "TVOC",
-      "temp": "Temp",
-      "hum": "Hum",
-      "press": "Press"
+      "confirm": "OK"
     },
     "settings": {
       "title": "Settings",
@@ -78,7 +66,10 @@
     "analysis": {
       "mean": "Mean",
       "median": "Median",
-      "std_dev": "Std Dev"
+      "std_dev": "Std Dev",
+      "max": "Max",
+      "min": "Min",
+      "range": "Range"
     },
     "log": {
       "title": "Log",

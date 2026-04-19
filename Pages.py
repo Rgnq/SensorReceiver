@@ -1174,7 +1174,7 @@ class AnalysisTab(QWidget):
         self.valueNames = valueNames
         
         # 更新表格标题
-        self.dataTable.setHorizontalHeaderLabels([*valueNames,*['' for i in range(27)]])
+        self.dataTable.setHorizontalHeaderLabels([*valueNames,*['' for i in range(24)]])
         self.dataTable.setVerticalHeaderLabels([*dataNames,*['' for i in range(19)]])
 
     def initUI(self):
@@ -1189,7 +1189,7 @@ class AnalysisTab(QWidget):
         ]
         
         # 使用翻译函数获取统计值名称
-        valueNames = [t("page.analysis.mean"), t("page.analysis.median"), t("page.analysis.std_dev")]
+        valueNames = [t("page.analysis.mean"), t("page.analysis.median"), t("page.analysis.std_dev"), t("page.analysis.max"), t("page.analysis.min"), t("page.analysis.range")]
         
         self.dataNames = dataNames
         self.valueNames = valueNames
@@ -1199,7 +1199,7 @@ class AnalysisTab(QWidget):
         self.dataTable = QTableWidget()
         self.dataTable.setRowCount(30)
         self.dataTable.setColumnCount(30)
-        self.dataTable.setHorizontalHeaderLabels([*valueNames,*['' for i in range(27)]])
+        self.dataTable.setHorizontalHeaderLabels([*valueNames,*['' for i in range(24)]])
         self.dataTable.setVerticalHeaderLabels([*dataNames,*['' for i in range(19)]])
         self.dataTable.resizeColumnsToContents()
         for i in range(len(valueNames)):
@@ -1220,7 +1220,10 @@ class AnalysisTab(QWidget):
             data_median = ['{:.2f}'.format((x[len(x)//2-1]+x[len(x)//2])/2) if len(x)%2==0 else '{:.2f}'.format(x[(len(x)-1)//2]) for x in dataListSort]
             #data_std = list(map(lambda mean,data: "{:.2f}".format((sum((x-eval(mean))**2 for x in data)/len(data))**(1/2)), data_mean, dataList))
             data_std = ["{:.2f}".format((sum([(x-float(mean))**2 for x in data])/len(data))**(1/2)) for mean,data in zip(data_mean,dataList)]
-            data_result = [data_mean,data_median,data_std]
+            data_max = ["{:.2f}".format(max(data)) for data in dataList]
+            data_min = ["{:.2f}".format(min(data)) for data in dataList]
+            data_range = ["{:.2f}".format(max(data) - min(data)) for data in dataList]
+            data_result = [data_mean, data_median, data_std, data_max, data_min, data_range]
             for column,value in enumerate(data_result):
                 for row,data in enumerate(value):
                     self.dataTable.setItem(row,column,QTableWidgetItem(data))

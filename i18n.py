@@ -271,7 +271,10 @@ def create_default_translations():
             "analysis": {
                 "mean": "平均值",
                 "median": "中位数",
-                "std_dev": "标准差"
+                "std_dev": "标准差",
+                "max": "最大值",
+                "min": "最小值",
+                "range": "范围"
             },
             "log": {
                 "title": "日志",
@@ -384,7 +387,10 @@ def create_default_translations():
             "analysis": {
                 "mean": "Mean",
                 "median": "Median",
-                "std_dev": "Std Dev"
+                "std_dev": "Std Dev",
+                "max": "Max",
+                "min": "Min",
+                "range": "Range"
             },
             "log": {
                 "title": "Log",
