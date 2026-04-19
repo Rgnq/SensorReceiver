@@ -237,12 +237,16 @@ def create_default_translations():
                 "enable": "启用",
                 "select_data": "选择数据",
                 "preview_data": "预览数据",
-                "plot_image": "绘制图像",
+                "analyze": "分析",
+                "upper_toggle": "展开/折叠 上部分",
+                "lower_toggle": "展开/折叠 下部分",
                 "no_data": "无数据记录",
-                "not_selected": "未选中数据",
+                "no_data_selected": "未选中数据",
                 "invalid_directory": "无效目录路径",
                 "error_loading": "加载数据失败",
-                "analysis_tab": "分析"
+                "analysis_tab": "分析",
+                "select_folder": "选择文件夹",
+                "confirm": "确定"
             },
             "settings": {
                 "title": "设置",
@@ -346,12 +350,16 @@ def create_default_translations():
                 "enable": "Enable",
                 "select_data": "Select Data",
                 "preview_data": "Preview Data",
-                "plot_image": "Plot Image",
+                "analyze": "Analyze",
+                "upper_toggle": "Toggle Upper Section",
+                "lower_toggle": "Toggle Lower Section",
                 "no_data": "No data records",
-                "not_selected": "No data selected",
+                "no_data_selected": "No data selected",
                 "invalid_directory": "Invalid directory path",
                 "error_loading": "Failed to load data",
-                "analysis_tab": "Analysis"
+                "analysis_tab": "Analysis",
+                "select_folder": "Select Folder",
+                "confirm": "OK"
             },
             "settings": {
                 "title": "Settings",

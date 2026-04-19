@@ -521,6 +521,10 @@ class HistoryPage(QWidget):
 
         self.is_dark_theme = True  # 追踪当前主题
 
+        self.anims = {"Upper":None,"Lower":None}  # 用于存储动画对象
+        self.upperExpanded = True  # 记录上部分展开状态
+        self.lowerExpanded = True  # 记录下部分展开状态
+
         self.msg = QMessageBox()
         self.msg.setOption(QMessageBox.DontUseNativeDialog, True)
         self.msg.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
@@ -554,12 +558,36 @@ class HistoryPage(QWidget):
         self.tabWidget.setTabText(0, t("page.history.select_data"))
         self.tabWidget.setTabText(1, t("page.history.preview_data"))
         self.tabWidget.setTabText(2, t("page.history.analysis_tab"))
-        self.plotBtn.setText(t("page.history.plot_image"))
+        self.plotBtn.setText(t("page.history.analyze"))
+        self.upperCheckbox.setText(t("page.history.upper_toggle"))
+        self.lowerCheckbox.setText(t("page.history.lower_toggle"))
     
     def initUI(self):
         nowDir = os.getcwd()
 
         main_layout = QVBoxLayout(self)
+
+        # 置顶控件容器：始终占据最小空间
+        self.top_controls = QWidget()
+        self.top_controls.setMaximumHeight(100)  # 固定最大高度，确保最小空间占用
+        top_controls_layout = QVBoxLayout(self.top_controls)
+        top_controls_layout.setContentsMargins(0, 0, 0, 0)
+        top_controls_layout.setSpacing(2)  # 减少间距
+
+        # 控制checkbox
+        checkbox_layout = QHBoxLayout()
+        self.upperCheckbox = QCheckBox(t("page.history.upper_toggle"))
+        self.lowerCheckbox = QCheckBox(t("page.history.lower_toggle"))
+        self.upperCheckbox.setChecked(True)
+        self.lowerCheckbox.setChecked(True)
+        self.upperCheckbox.stateChanged.connect(self.toggleUpperWidget)
+        self.lowerCheckbox.stateChanged.connect(self.toggleLowerWidget)
+        checkbox_layout.addWidget(self.upperCheckbox)
+        checkbox_layout.addWidget(self.lowerCheckbox)
+        checkbox_layout.addStretch()
+        top_controls_layout.addLayout(checkbox_layout)
+
+        # 路径选择
         top_layout = QHBoxLayout()
         self.pathSaveLineEdit = QLineEdit()
         self.pathSaveLineEdit.setText(f"{nowDir}\\history")
@@ -572,8 +600,9 @@ class HistoryPage(QWidget):
         top_layout.addWidget(self.pathSaveLineEdit,1)
         top_layout.addWidget(self.browserFileBtn)
         top_layout.addWidget(self.pathBtnConfirm)
-        main_layout.addLayout(top_layout)
+        top_controls_layout.addLayout(top_layout)
 
+        # 日期选择
         date_layout = QHBoxLayout()
         self.calendarButton = QPushButton()
         self.calendarButton.setText(t("page.history.select_date"))
@@ -581,23 +610,36 @@ class HistoryPage(QWidget):
         self.DateLabel = QLineEdit()
         self.DateLabel.setReadOnly(True)
         self.DateLabel.setText(QDate.currentDate().toString(Qt.DateFormat.ISODate))
-        # self.YearDate = QComboBox()
-        # self.MonthDate = QComboBox()
-        # self.DayDate = QComboBox()
-
         self.DateCheck = QCheckBox()
         self.DateCheck.setText(t("page.history.enable"))
         date_layout.addWidget(self.calendarButton)
         date_layout.addWidget(self.DateLabel,1)
-        # date_layout.addWidget(self.YearDate,1)
-        # date_layout.addWidget(self.MonthDate,1)
-        # date_layout.addWidget(self.DayDate,1)
         date_layout.addWidget(self.DateCheck)
-        main_layout.addLayout(date_layout)
+        top_controls_layout.addLayout(date_layout)
 
+        # 分析按钮
+        analyze_layout = QHBoxLayout()
+        self.plotBtn = QPushButton()
+        self.plotBtn.setText(t("page.history.analyze"))
+        self.plotBtn.clicked.connect(self.plotData)
+        analyze_layout.addWidget(self.plotBtn,1)
+        top_controls_layout.addLayout(analyze_layout)
+
+        main_layout.addWidget(self.top_controls, 0)  # stretch 0，始终保持在顶部
+
+        # 内容容器：包含可折叠的上半部分和下半部分
+        self.content_container = QWidget()
+        content_layout = QVBoxLayout(self.content_container)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(self.content_container, 1)  # stretch 1，占用剩余空间
+
+        # 上半部分：TabWidget
+        self.upper_widget = QWidget()
+        upper_layout = QVBoxLayout(self.upper_widget)
         self.tabWidget = QTabWidget()
-        main_layout.addWidget(self.tabWidget)
-        
+        upper_layout.addWidget(self.tabWidget)
+        content_layout.addWidget(self.upper_widget)
+
         localHistory_tab = QWidget()
         localHistory_layout = QVBoxLayout()
         localHistory_tab.setLayout(localHistory_layout)
@@ -612,15 +654,15 @@ class HistoryPage(QWidget):
         self.DataAnalysis = AnalysisTab()
         self.DataAnalysis.setStyleSheet("* {border-radius: 0px;}")
         self.tabWidget.addTab(self.DataAnalysis,t("page.history.analysis_tab"))
-        
-        self.plotBtn = QPushButton()
-        self.plotBtn.setText(t("page.history.plot_image"))
-        self.plotBtn.clicked.connect(self.plotData)
-        main_layout.addWidget(self.plotBtn)
+
+        # 下半部分：画图区域
+        self.lower_widget = QWidget()
+        lower_layout = QVBoxLayout(self.lower_widget)
 
         self.RegionPlot = SensorPlotter()
         self.RegionPlot.setStyleSheet("* {border-radius: 0px;}")
-        main_layout.addWidget(self.RegionPlot,1)
+        lower_layout.addWidget(self.RegionPlot,1)
+        content_layout.addWidget(self.lower_widget,1)
 
     # def select_folder(self):
     #     dialog = QFileDialog()
@@ -763,6 +805,29 @@ class HistoryPage(QWidget):
         except Exception as e:
             self.msg.warning(self.msg, "Error", f"Failed to load data: {str(e)}")
  
+    def toggleUpperWidget(self):
+        startHeight = self.upper_widget.height()
+        if self.upperExpanded:
+            self.animateWidgetDisplay("Upper", startHeight, 0, self.upper_widget, "maximumHeight")
+        else:
+            self.animateWidgetDisplay("Upper", startHeight, 800, self.upper_widget, "maximumHeight")
+        self.upperExpanded = not self.upperExpanded
+
+    def toggleLowerWidget(self):
+        startHeight = self.lower_widget.height()
+        if self.lowerExpanded:
+            self.animateWidgetDisplay("Lower", startHeight, 0, self.lower_widget, "maximumHeight")
+        else:
+            self.animateWidgetDisplay("Lower", startHeight, 800, self.lower_widget, "maximumHeight")
+        self.lowerExpanded = not self.lowerExpanded
+
+    def animateWidgetDisplay(self, anime, start, end, widget, property, duration=200):
+        self.anims[anime] = QPropertyAnimation(widget, bytes(property, encoding='utf-8'))
+        self.anims[anime].setDuration(duration)
+        self.anims[anime].setStartValue(start)
+        self.anims[anime].setEndValue(end)
+        self.anims[anime].start()
+
 
 class SettingsPage(QWidget):
     pathSaveSignal = Signal(str)
