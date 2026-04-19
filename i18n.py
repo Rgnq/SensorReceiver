@@ -200,8 +200,12 @@ def initialize_i18n():
     load_language_preference()
 
 
-def create_default_translations():
-    """创建默认的翻译文件"""
+def create_default_translations(force: bool = False):
+    """创建默认的翻译文件
+
+    Args:
+        force: 如果为 True，则覆盖已有语言文件。
+    """
     # 中文翻译
     zh_translations = {
         "page": {
@@ -261,6 +265,8 @@ def create_default_translations():
                 "light_theme": "浅色主题",
                 "reset_colors": "重置为默认颜色",
                 "reset_success": "已重置为默认颜色",
+                "reset_localization": "重置本地化文本",
+                "reset_localization_success": "本地化文本已恢复为初始状态",
                 "language": "语言",
                 "select_language": "选择语言",
                 "export_language": "导出语言文件",
@@ -377,6 +383,8 @@ def create_default_translations():
                 "light_theme": "Light Theme",
                 "reset_colors": "Reset to Default Colors",
                 "reset_success": "Reset to default colors",
+                "reset_localization": "Reset localization texts",
+                "reset_localization_success": "Localization text reset to defaults",
                 "language": "Language",
                 "select_language": "Select Language",
                 "export_language": "Export Language File",
@@ -438,15 +446,24 @@ def create_default_translations():
     
     # 保存中文翻译
     zh_file = os.path.join(I18N_DIR, "zh_CN.json")
-    if not os.path.exists(zh_file):
+    if force or not os.path.exists(zh_file):
         with open(zh_file, 'w', encoding='utf-8') as f:
             json.dump(zh_translations, f, ensure_ascii=False, indent=2)
     
     # 保存英文翻译
     en_file = os.path.join(I18N_DIR, "en_US.json")
-    if not os.path.exists(en_file):
+    if force or not os.path.exists(en_file):
         with open(en_file, 'w', encoding='utf-8') as f:
             json.dump(en_translations, f, ensure_ascii=False, indent=2)
+
+
+def reset_translations(language_code: str = None) -> bool:
+    """重置翻译文件为默认内容，重新加载当前语言。"""
+    ensure_i18n_dir()
+    if language_code is not None and language_code not in _supported_languages:
+        return False
+    create_default_translations(force=True)
+    return load_language(_current_language)
 
 
 def export_language_file(language_code: str, export_path: str):

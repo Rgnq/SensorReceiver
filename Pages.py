@@ -9,7 +9,7 @@ from PlotWidget import SensorPlotter
 import os
 import time
 from colorstyle import *
-from i18n import t, set_language, get_supported_languages, get_current_language
+from i18n import t, set_language, get_supported_languages, get_current_language, reset_translations
 
 class Homepage(QWidget):
     sendTextSignal = Signal(str)
@@ -1009,8 +1009,11 @@ class SettingsPage(QWidget):
         # 重置按钮
         reset_layout = QHBoxLayout()
         reset_layout.addStretch()
+        self.resetLocalizationBtn = QPushButton(t("page.settings.reset_localization"))
+        self.resetLocalizationBtn.clicked.connect(self.reset_localization)
         self.resetColorBtn = QPushButton(t("page.settings.reset_colors"))
         self.resetColorBtn.clicked.connect(self.reset_theme_colors)
+        reset_layout.addWidget(self.resetLocalizationBtn)
         reset_layout.addWidget(self.resetColorBtn)
         main_layout.addLayout(reset_layout)
 
@@ -1127,6 +1130,16 @@ class SettingsPage(QWidget):
         self.create_color_panel()
         self.themeColorsChangedSignal.emit(is_dark)
         QMessageBox.information(self, t("page.settings.reset_message_title"), t("page.settings.reset_success"))
+
+    def reset_localization(self):
+        """重置本地化文本为初始状态"""
+        if reset_translations():
+            current_lang = get_current_language()
+            set_language(current_lang)
+            self.languageChangedSignal.emit(current_lang)
+            QMessageBox.information(self, t("page.settings.reset_message_title"), t("page.settings.reset_localization_success"))
+        else:
+            QMessageBox.warning(self, t("error.title"), t("error.export_failed"))
 
     def on_pathBtn_click(self):
         directory = self.pathLineEdit.text().strip()
