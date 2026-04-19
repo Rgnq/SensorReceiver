@@ -21,6 +21,8 @@ light_theme_colors = {
 import json
 import os
 
+from i18n import t
+
 CONFIG_DIR = "config"
 DARK_THEME_CONFIG = os.path.join(CONFIG_DIR, "dark_theme_colors.json")
 LIGHT_THEME_CONFIG = os.path.join(CONFIG_DIR, "light_theme_colors.json")
@@ -158,7 +160,7 @@ def get_homepage_label_stylesheet(is_dark: bool = True):
 def get_homepage_sensor_label_stylesheet(is_dark: bool = True):
     colors = get_theme_colors(is_dark)
     return f"""
-        QLabel[text~="MPU6050"], QLabel[text~="气体传感器"], QLabel[text~="温湿压传感器"]
+        QLabel[text="{t('page.homepage.mpu6050')}"], QLabel[text="{t('page.homepage.gas_sensor')}"], QLabel[text="{t('page.homepage.thp_sensor')}"]
         {{
             background-color: {colors['Surface']};
             border: 1px solid {colors['Border_Hover']};
