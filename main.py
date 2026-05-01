@@ -18,7 +18,7 @@ def main():
     w.show()
     app.exec()
 
-def switch_theme(app, theme_name, MainWindow):
+def switch_theme(app, theme_name: str, MainWindow: MainWindow):
     apply_stylesheet(app, theme=theme_name, invert_secondary=False)
     is_dark = theme_name.split('_')[0] == 'dark'
     MainWindow.update_style(is_dark)

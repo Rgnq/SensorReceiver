@@ -77,6 +77,8 @@ class Homepage(QWidget):
         self.toolButton.setStyleSheet(get_tool_button_stylesheet(is_dark))
         # 更新右侧面板的样式
         self.right_vertical.update_style(is_dark)
+        # 更新PlotWidget的样式
+        self.RegionPlot.update_style(is_dark)
 
     def update_ui_text(self):
         """更新UI文本（用于语言切换）"""
@@ -548,6 +550,7 @@ class HistoryPage(QWidget):
         """更新主题样式"""
         self.is_dark_theme = is_dark
         # HistoryPage的样式主要由qt_material处理，这里保留接口以保持一致性
+        self.RegionPlot.update_style(is_dark)
     
     def update_ui_text(self):
         """更新UI文本（用于语言切换）"""

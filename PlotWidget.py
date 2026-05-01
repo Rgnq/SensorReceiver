@@ -212,3 +212,9 @@ class SensorPlotter(QMainWindow):
             for pw in plots.values():
                 pw.setAxisItems({'bottom': pg.AxisItem(orientation='bottom')})
                 pw.setLabel('bottom', 'Time (s)')
+
+    def update_style(self, is_dark: bool):
+        """更新PlotWidget的样式"""
+        for plots in [self.mpu_plots, self.gas_plots, self.thp_plots]:
+            for pw in plots.values():
+                pw.setBackground('k' if is_dark else 'w')
