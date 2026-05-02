@@ -188,7 +188,7 @@ def main():
     parser = argparse.ArgumentParser(description="Nuitka 打包脚本")
     parser.add_argument("--standalone", action="store_true", default=True,
                        help="构建独立版本（包含依赖）")
-    parser.add_argument("--onefile", action="store_true", default=False,
+    parser.add_argument("--onefile", action="store_true", default=True,
                        help="打包为单个可执行文件")
     parser.add_argument("--no-copy", action="store_true", default=False,
                        help="不复制到 dist 目录")
