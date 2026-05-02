@@ -1,7 +1,9 @@
 
 dark_theme_colors = {
     "Background" : "#121212",
+    "Background_Secondary" : "#1A1A1A5C",
     "Surface" : "#1E1E1E",
+    "Surface_Secondary" : "rgba(26, 26, 26, 0.36)",
     "Text_Primary" : "#E0E0E0",
     "Text_Secondary" : "#A0A0A0",
     "Accent" : "#BB86FC",  # 柔和紫
@@ -10,7 +12,9 @@ dark_theme_colors = {
 
 light_theme_colors = {
     "Background" : "#FFFFFF",
+    "Background_Secondary" : "#F0F0F05C",
     "Surface" : "#C8C8C8",
+    "Surface_Secondary" : "rgba(208, 208, 208, 0.5)",
     "Text_Primary" : "#000000",
     "Text_Secondary" : "#606060",
     "Accent" : "#6200EE",  # 深紫
@@ -114,7 +118,7 @@ def get_menubar_button_stylesheet(is_dark: bool = True):
 # Sidebar样式表生成
 def get_sidebar_stylesheet(is_dark: bool = True):
     colors = get_theme_colors(is_dark)
-    return f"background-color: {colors['Surface']};"
+    return f"background-color: {colors['Surface_Secondary']};"
 
 def get_sidebar_button_stylesheet(is_dark: bool = True):
     colors = get_theme_colors(is_dark)

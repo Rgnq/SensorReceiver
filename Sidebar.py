@@ -35,6 +35,7 @@ class Sidebar(QWidget):
         self.setFixedWidth(self.collapsed_width)
         self.setStyleSheet(get_sidebar_stylesheet(self.is_dark_theme))
         self.setAttribute(Qt.WA_StyledBackground, True)   # 绘制背景色
+        self.setAutoFillBackground(True)  # 确保背景色生效
         
         self.mainLayout = QVBoxLayout(self)
         self.mainLayout.setContentsMargins(0, 10, 0, 0)
