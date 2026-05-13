@@ -6,6 +6,7 @@ from PySide6.QtGui import QColor
 from serial.tools import list_ports
 from Serial import SerialThread
 from PlotWidget import SensorPlotter
+from imu_processor import IMUProcessor, FilterType
 import os
 import time
 from colorstyle import *
@@ -56,6 +57,9 @@ class Homepage(QWidget):
         self.sensorDisplay = True
         self.plotDisplay = True
         self.runtimeSave = None
+        
+        # 初始化IMU处理器 - 用于处理加速度和角速度数据
+        self.imu_processor = IMUProcessor(sample_rate=100.0, filter_type=FilterType.COMPLEMENTARY)
 
         self.initUI()
 
@@ -221,9 +225,29 @@ class Homepage(QWidget):
             self.MPU6050_Data = dict(zip(self.dataNames[0:6],dataListInt[0:6]))
             self.Gas_Data = dict(zip(self.dataNames[6:8],dataListInt[6:8]))
             self.THP_Data = dict(zip(self.dataNames[8:11],dataListInt[8:11]))
+            
+            # 更新图表显示
             self.RegionPlot.update_mpu(self.MPU6050_Data)
             self.RegionPlot.update_gas(self.Gas_Data)
             self.RegionPlot.update_thp(self.THP_Data)
+            
+            # 处理IMU数据并更新3D姿态显示
+            try:
+                # 提取加速度和角速度数据 (单位需要根据实际情况调整)
+                accel = [self.MPU6050_Data['AX'], self.MPU6050_Data['AY'], self.MPU6050_Data['AZ']]
+                gyro = [self.MPU6050_Data['GX'], self.MPU6050_Data['GY'], self.MPU6050_Data['GZ']]
+                
+                # 更新IMU处理器
+                self.imu_processor.update(accel, gyro)
+                
+                # 获取欧拉角并更新3D姿态显示
+                roll, pitch, yaw = self.imu_processor.get_euler_angles()
+                self.RegionPlot.update_attitude(roll, pitch, yaw)
+            except Exception as e:
+                # IMU处理出错时不影响其他显示
+                print(f"IMU处理错误: {e}")
+            
+            # 保存数据
             if self.right_vertical.autoSaveStatus:
                 if self.runtimeSave is None:
                     nowtime = time.strftime("%G_%m_%d_%H_%M_%S")
@@ -247,6 +271,10 @@ class Homepage(QWidget):
         for label in self.labels:
             label.setText(". . .")
         self.RegionPlot.reset()
+        # 重置IMU处理器
+        self.imu_processor.reset()
+        # 重置3D显示
+        self.RegionPlot.update_attitude(0, 0, 0)
         if self.runtimeSave:
             self.runtimeSave.close()
             self.runtimeSave = None

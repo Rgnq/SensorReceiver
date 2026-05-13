@@ -2,6 +2,7 @@ import time
 from PySide6.QtWidgets import QMainWindow, QTabWidget, QWidget, QVBoxLayout, QGridLayout, QFileDialog
 import pyqtgraph as pg
 from pyqtgraph.widgets.FileDialog import FileDialog
+from AttitudeVisualizer import AttitudePanel
 
 original_file_dialog_init = FileDialog.__init__
 
@@ -79,6 +80,14 @@ class SensorPlotter(QMainWindow):
             thp_layout.addWidget(pw)
         thp_tab.setLayout(thp_layout)
         self.tab_widget.addTab(thp_tab, "温湿压传感器")
+
+        # 3D Attitude Tab - 传感器姿态3D显示
+        attitude_tab = QWidget()
+        attitude_layout = QVBoxLayout()
+        self.attitude_panel = AttitudePanel()
+        attitude_layout.addWidget(self.attitude_panel)
+        attitude_tab.setLayout(attitude_layout)
+        self.tab_widget.addTab(attitude_tab, "3D姿态")
 
         # Max data points to keep (to prevent memory issues)
         self.max_points = 1000
@@ -218,3 +227,25 @@ class SensorPlotter(QMainWindow):
         for plots in [self.mpu_plots, self.gas_plots, self.thp_plots]:
             for pw in plots.values():
                 pw.setBackground('k' if is_dark else 'w')
+    
+    def update_attitude(self, roll, pitch, yaw):
+        """
+        更新3D姿态显示 (欧拉角，单位：度)
+        
+        Args:
+            roll: 绕X轴旋转 (度)
+            pitch: 绕Y轴旋转 (度)
+            yaw: 绕Z轴旋转 (度)
+        """
+        if hasattr(self, 'attitude_panel'):
+            self.attitude_panel.update_attitude(roll, pitch, yaw)
+    
+    def update_attitude_from_quaternion(self, quaternion):
+        """
+        从四元数更新3D姿态
+        
+        Args:
+            quaternion: [w, x, y, z]
+        """
+        if hasattr(self, 'attitude_panel'):
+            self.attitude_panel.update_from_quaternion(quaternion)
