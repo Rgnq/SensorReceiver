@@ -9,6 +9,7 @@ from PlotWidget import SensorPlotter
 from imu_processor import IMUProcessor, FilterType
 import os
 import time
+import math
 from colorstyle import *
 from i18n import t, set_language, get_supported_languages, get_current_language, reset_translations
 
@@ -59,7 +60,7 @@ class Homepage(QWidget):
         self.runtimeSave = None
         
         # 初始化IMU处理器 - 用于处理加速度和角速度数据
-        self.imu_processor = IMUProcessor(sample_rate=100.0, filter_type=FilterType.COMPLEMENTARY)
+        self.imu_processor = IMUProcessor(sample_rate=50, filter_type=FilterType.COMPLEMENTARY)
 
         self.initUI()
 
@@ -218,7 +219,14 @@ class Homepage(QWidget):
     def updateDataDisplay(self,dataText:str):
         try:
             dataList = dataText.strip().split(",")
+            ACC_SCALE = 16384.0   # ±2g
+            GYRO_SCALE_DPS = 131.0   # ±250°/s
             dataListInt = [float(x) for x in dataList]
+            for i in range(6):
+                if i < 3:
+                    dataListInt[i] = dataListInt[i] / ACC_SCALE  # 加速度数据转换为g
+                else:
+                    dataListInt[i] = (dataListInt[i] / GYRO_SCALE_DPS) * (math.pi / 180.0) # 角速度数据转换为rad/s
             dataListStr = ["{:.2f}".format(x) for x in dataListInt]
             for i, data in enumerate(dataListStr):
                 self.labels[i].setText(data)

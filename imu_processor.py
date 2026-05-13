@@ -112,60 +112,46 @@ class IMUProcessor:
         if accel_norm == 0:
             return
         accel = accel / accel_norm
-        
+
         # 提取四元数分量
         q0, q1, q2, q3 = self.quaternion
-        
+
         # 陀螺仪数据
         gx, gy, gz = gyro
-        
-        # 辅助变量
-        _2q0 = 2.0 * q0
-        _2q1 = 2.0 * q1
-        _2q2 = 2.0 * q2
-        _2q3 = 2.0 * q3
-        _4q0 = 4.0 * q0
-        _4q1 = 4.0 * q1
-        _4q2 = 4.0 * q2
-        _8q1 = 8.0 * q1
-        _8q2 = 8.0 * q2
+
+        # 辅助变量 (用于雅可比和梯度下降)
         q0q0 = q0 * q0
         q1q1 = q1 * q1
         q2q2 = q2 * q2
         q3q3 = q3 * q3
-        
-        # 目标函数向量
-        f0 = _2q2 * q3 - _2q0 * q1 - accel[0]
-        f1 = _2q0 * q2 + _2q1 * q3 - accel[1]
-        f2 = 1.0 - _2q1q1 - _2q2q2 - accel[2]
-        
-        # Jacobian矩阵
-        J_00 = -_2q2
-        J_01 = _2q3
-        J_10 = _2q1
-        J_11 = _2q0
-        J_20 = -_4q1
-        J_21 = -_4q2
-        J_30 = -_2q0
-        J_31 = -_2q3
-        J_32 = -_2q1
-        J_40 = _2q3
-        J_41 = _2q0
-        J_50 = _2q2
-        J_51 = _2q1
-        J_60 = _4q2
-        J_61 = _4q3
-        J_70 = -_2q1
-        J_71 = -_2q0
-        J_80 = -_2q3
-        J_81 = _2q2
-        
-        # 步长计算
+
+        # 目标函数 f = [f0, f1, f2]^T
+        f0 = 2.0 * (q1 * q3 - q0 * q2) - accel[0]   # 原代码中的 f0 有误，此处更正为标准形式
+        f1 = 2.0 * (q0 * q1 + q2 * q3) - accel[1]
+        f2 = 2.0 * (0.5 - q1q1 - q2q2) - accel[2]
+
+        # 雅可比矩阵 J (3x4)
+        J_00 = -2.0 * q2
+        J_01 =  2.0 * q3
+        J_02 = -2.0 * q0
+        J_03 =  2.0 * q1
+
+        J_10 =  2.0 * q1
+        J_11 =  2.0 * q0
+        J_12 =  2.0 * q3
+        J_13 =  2.0 * q2
+
+        J_20 = -4.0 * q1
+        J_21 = -4.0 * q2
+        J_22 =  0.0
+        J_23 =  0.0
+
+        # 梯度步长 step = J^T * f
         step0 = J_00 * f0 + J_10 * f1 + J_20 * f2
         step1 = J_01 * f0 + J_11 * f1 + J_21 * f2
-        step2 = J_30 * f0 + J_31 * f1 + J_32 * f2
-        step3 = J_40 * f0 + J_41 * f1 + J_50 * f2
-        
+        step2 = J_02 * f0 + J_12 * f1 + J_22 * f2
+        step3 = J_03 * f0 + J_13 * f1 + J_23 * f2
+
         # 规范化步长
         step_norm = math.sqrt(step0*step0 + step1*step1 + step2*step2 + step3*step3)
         if step_norm > 0:
@@ -173,20 +159,20 @@ class IMUProcessor:
             step1 /= step_norm
             step2 /= step_norm
             step3 /= step_norm
-        
-        # 更新四元数
-        q0 = q0 - self.beta * step0
-        q1 = q1 - self.beta * step1
-        q2 = q2 - self.beta * step2
-        q3 = q3 - self.beta * step3
-        
-        # 陀螺仪积分
-        q0 = q0 + 0.5 * (-q1 * gx - q2 * gy - q3 * gz) * self.dt
-        q1 = q1 + 0.5 * (q0 * gx + q2 * gz - q3 * gy) * self.dt
-        q2 = q2 + 0.5 * (q0 * gy - q1 * gz + q3 * gx) * self.dt
-        q3 = q3 + 0.5 * (q0 * gz + q1 * gy - q2 * gx) * self.dt
-        
-        # 规范化
+
+        # 梯度下降更新四元数
+        q0 -= self.beta * step0
+        q1 -= self.beta * step1
+        q2 -= self.beta * step2
+        q3 -= self.beta * step3
+
+        # 陀螺仪积分 (四元数微分方程)
+        q0 += 0.5 * (-q1 * gx - q2 * gy - q3 * gz) * self.dt
+        q1 += 0.5 * ( q0 * gx + q2 * gz - q3 * gy) * self.dt
+        q2 += 0.5 * ( q0 * gy - q1 * gz + q3 * gx) * self.dt
+        q3 += 0.5 * ( q0 * gz + q1 * gy - q2 * gx) * self.dt
+
+        # 规范化四元数
         norm = math.sqrt(q0*q0 + q1*q1 + q2*q2 + q3*q3)
         if norm > 0:
             self.quaternion = np.array([q0/norm, q1/norm, q2/norm, q3/norm])
