@@ -26,23 +26,23 @@ class SensorPlotter(QMainWindow):
         self.tab_widget = QTabWidget()
         self.setCentralWidget(self.tab_widget)
 
-        # MPU6050 Tab
-        mpu_tab = QWidget()
-        mpu_layout = QGridLayout()
-        self.mpu_plots = {}
-        self.mpu_curves = {}
-        self.mpu_data = {name: {'x': [], 'y': []} for name in ['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']}
-        for i, name in enumerate(['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']):
+        # BH1750 Tab
+        bh_tab = QWidget()
+        bh_layout = QGridLayout()
+        self.bh_plots = {}
+        self.bh_curves = {}
+        self.bh_data = {name: {'x': [], 'y': []} for name in ['LIGHT']}
+        for i, name in enumerate(['LIGHT']):
             pw = pg.PlotWidget()
             pw.setTitle(name)
             pw.setLabel('bottom', 'Time (s)')
-            pw.setLabel('left', 'Acceleration')
+            pw.setLabel('left', '强度 (lux)')
             curve = pw.plot(pen=pg.mkPen('r'))
-            self.mpu_plots[name] = pw
-            self.mpu_curves[name] = curve
-            mpu_layout.addWidget(pw, i // 3, i % 3)  # 2 rows x 3 columns for better layout
-        mpu_tab.setLayout(mpu_layout)
-        self.tab_widget.addTab(mpu_tab, "MPU6050")
+            self.bh_plots[name] = pw
+            self.bh_curves[name] = curve
+            bh_layout.addWidget(pw, i // 3, i % 3)  # 2 rows x 3 columns for better layout
+        bh_tab.setLayout(bh_layout)
+        self.tab_widget.addTab(bh_tab, "BH1750传感器")
 
         # Gas Sensor Tab
         gas_tab = QWidget()
@@ -94,14 +94,14 @@ class SensorPlotter(QMainWindow):
             y_list.pop(0)
         curve.setData(x_list, y_list)
 
-    def update_mpu(self, data):
+    def update_bh(self, data):
         """
-        Update MPU6050 plots. data should be a dict with keys 'AX', 'AY', 'AZ', 'GX', 'GY', 'GZ'
+        Update BH1750 plots. data should be a dict with keys 'LIGHT'
         """
-        for name in ['AX', 'AY', 'AZ', 'GX', 'GY', 'GZ']:
+        for name in ['LIGHT']:
             if name in data:
-                self._update_plot(self.mpu_data[name], self.mpu_curves[name],
-                                  self.mpu_data[name]['x'], self.mpu_data[name]['y'], data[name])
+                self._update_plot(self.bh_data[name], self.bh_curves[name],
+                                  self.bh_data[name]['x'], self.bh_data[name]['y'], data[name])
 
     def update_gas(self, data):
         """
@@ -127,8 +127,8 @@ class SensorPlotter(QMainWindow):
         """
         self.start_time = time.time()
         self.relative_time = True
-        data_groups = [self.mpu_data, self.gas_data, self.thp_data]
-        curve_groups = [self.mpu_curves, self.gas_curves, self.thp_curves]
+        data_groups = [self.bh_data, self.gas_data, self.thp_data]
+        curve_groups = [self.bh_curves, self.gas_curves, self.thp_curves]
         for data_dict in data_groups:
             for name in data_dict:
                 data_dict[name]['x'] = []
@@ -137,30 +137,30 @@ class SensorPlotter(QMainWindow):
             for curve in curves.values():
                 curve.setData([], [])
 
-    def load_mpu_history(self, history_data):
+    def load_bh_history(self, history_data):
         """
-        Load historical data for MPU6050 with absolute times.
-        history_data should be a dict like {'AX': {'times': [t1, t2, ...], 'values': [v1, v2, ...]}, ...}
+        Load historical data for BH1750 with absolute times.
+        history_data should be a dict like {'LIGHT': {'times': [t1, t2, ...], 'values': [v1, v2, ...]}, ...}
         """
         if self.relative_time:
             self.relative_time = False
 
-            # 为所有 MPU plot 设置日期时间轴（只需设置一次）
-            for name in self.mpu_plots:
-                plot_widget = self.mpu_plots[name]
+            # 为所有 BH plot 设置日期时间轴（只需设置一次）
+            for name in self.bh_plots:
+                plot_widget = self.bh_plots[name]
                 # 替换默认的 AxisItem 为 DateAxisItem
                 plot_widget.setAxisItems({'bottom': pg.DateAxisItem(orientation='bottom')})
                 # 可选：调整显示格式（默认已经比较友好）
                 # plot_widget.getAxis('bottom').setLabel(text='时间')
 
-        for name in self.mpu_data:
+        for name in self.bh_data:
             if name in history_data:
                 times = history_data[name]['times']
                 values = history_data[name]['values']
                 if len(times) == len(values):
-                    self.mpu_data[name]['x'] = times
-                    self.mpu_data[name]['y'] = values
-                    self.mpu_curves[name].setData(times, values)
+                    self.bh_data[name]['x'] = times
+                    self.bh_data[name]['y'] = values
+                    self.bh_curves[name].setData(times, values)
 
     def load_gas_history(self, history_data):
         """
@@ -208,7 +208,7 @@ class SensorPlotter(QMainWindow):
 
     def use_relative_time_axis(self):
         self.relative_time = True
-        for plots in [self.mpu_plots, self.gas_plots, self.thp_plots]:
+        for plots in [self.bh_plots, self.gas_plots, self.thp_plots]:
             for pw in plots.values():
                 pw.setAxisItems({'bottom': pg.AxisItem(orientation='bottom')})
                 pw.setLabel('bottom', 'Time (s)')

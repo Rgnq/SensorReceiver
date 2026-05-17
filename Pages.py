@@ -15,12 +15,7 @@ class Homepage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        self.AX_label = QLineEdit(". . .")
-        self.AY_label = QLineEdit(". . .")
-        self.AZ_label = QLineEdit(". . .")
-        self.GX_label = QLineEdit(". . .")
-        self.GY_label = QLineEdit(". . .")
-        self.GZ_label = QLineEdit(". . .")
+        self.LIGHT_label = QLineEdit(". . .")
         self.CO2_label = QLineEdit(". . .")
         self.TVOC_label = QLineEdit(". . .")
         self.TEMP_label = QLineEdit(". . .")
@@ -29,17 +24,17 @@ class Homepage(QWidget):
 
         self.dataBuffer = []
 
-        self.labels = [self.AX_label, self.AY_label, self.AZ_label, self.GX_label, self.GY_label, self.GZ_label,
+        self.labels = [self.LIGHT_label,
                         self.CO2_label, self.TVOC_label,
                         self.TEMP_label, self.HUM_label, self.PRESS_label]
         
         for label in self.labels:
             label.setReadOnly(True)
         
-        self.dataNames = ["AX","AY","AZ","GX","GY","GZ","CO2","TVOC","温度","湿度","压强"]
-        self.MPU6050_Data = dict(zip(self.dataNames[0:6],[0 for i in range(6)]))
-        self.Gas_Data = dict(zip(self.dataNames[6:8],[0 for i in range(2)]))
-        self.THP_Data = dict(zip(self.dataNames[8:11],[0 for i in range(3)]))
+        self.dataNames = ["Light","CO2","TVOC","温度","湿度","压强"]
+        self.BH1750_Data = dict(zip(self.dataNames[0:1],[0 for i in range(1)]))
+        self.Gas_Data = dict(zip(self.dataNames[1:3],[0 for i in range(2)]))
+        self.THP_Data = dict(zip(self.dataNames[3:6],[0 for i in range(3)]))
 
         self.pathSave = "history"
 
@@ -54,7 +49,7 @@ class Homepage(QWidget):
         self.initUI()
 
         self.setStyleSheet('''
-                        QLabel[text~="MPU6050"], QLabel[text~="气体传感器"], QLabel[text~="温湿压传感器"]
+                        QLabel[text~="BH1750"], QLabel[text~="气体传感器"], QLabel[text~="温湿压传感器"]
                         {background-color: #404040}
                     ''')
 
@@ -75,9 +70,9 @@ class Homepage(QWidget):
         self.sensor_widget = QWidget()
         self.sensor_horizontal = QHBoxLayout()
         self.sensor_horizontal.setObjectName("sensor_horizontal")
-        # 第一块：MPU6050 六轴传感器数据区块
-        self.mpu6050_group = self._create_mpu6050_grid()
-        self.sensor_horizontal.addLayout(self.mpu6050_group, stretch=2)
+        # 第一块：bh1750 六轴传感器数据区块
+        self.bh1750_group = self._create_bh1750_grid()
+        self.sensor_horizontal.addLayout(self.bh1750_group, stretch=1)
         # 第二块：气体传感器区块 (CO2 + TVOC)
         self.gas_group = self._create_gas_grid()
         self.sensor_horizontal.addLayout(self.gas_group, stretch=1)
@@ -159,10 +154,10 @@ class Homepage(QWidget):
             dataListStr = ["{:.2f}".format(x) for x in dataListInt]
             for i, data in enumerate(dataListStr):
                 self.labels[i].setText(data)
-            self.MPU6050_Data = dict(zip(self.dataNames[0:6],dataListInt[0:6]))
-            self.Gas_Data = dict(zip(self.dataNames[6:8],dataListInt[6:8]))
-            self.THP_Data = dict(zip(self.dataNames[8:11],dataListInt[8:11]))
-            self.RegionPlot.update_mpu(self.MPU6050_Data)
+            self.BH1750_Data = dict(zip(self.dataNames[0:1],dataListInt[3:4]))
+            self.Gas_Data = dict(zip(self.dataNames[1:3],dataListInt[4:6]))
+            self.THP_Data = dict(zip(self.dataNames[3:6],dataListInt[0:3]))
+            self.RegionPlot.update_bh(self.BH1750_Data)
             self.RegionPlot.update_gas(self.Gas_Data)
             self.RegionPlot.update_thp(self.THP_Data)
             if self.right_vertical.autoSaveStatus:
@@ -232,33 +227,20 @@ class Homepage(QWidget):
         self.anims[anime].start()
 
 
-    def _create_mpu6050_grid(self):
-        """ MPU6050 """
+    def _create_bh1750_grid(self):
+        """ BH1750 """
         grid = QGridLayout()
-        grid.setObjectName("mpu6050_grid")
+        grid.setObjectName("bh1750_grid")
 
         # 标题
-        title = QLabel("MPU6050")
+        title = QLabel("BH1750")
         title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
         grid.addWidget(title, 0, 0, 1, 4)
 
         # X轴
-        grid.addWidget(QLabel("AX"), 1, 0)
-        grid.addWidget(self.AX_label, 1, 1)
-        grid.addWidget(QLabel("GX"), 1, 2)
-        grid.addWidget(self.GX_label, 1, 3)
-
-        # Y轴
-        grid.addWidget(QLabel("AY"), 2, 0)
-        grid.addWidget(self.AY_label, 2, 1)
-        grid.addWidget(QLabel("GY"), 2, 2)
-        grid.addWidget(self.GY_label, 2, 3)
-
-        # Z轴
-        grid.addWidget(QLabel("AZ"), 3, 0)
-        grid.addWidget(self.AZ_label, 3, 1)
-        grid.addWidget(QLabel("GZ"), 3, 2)
-        grid.addWidget(self.GZ_label, 3, 3)
+        grid.addWidget(QLabel("LIGHT"), 1, 0)
+        grid.addWidget(self.LIGHT_label, 1, 1)
+        
 
         grid.setRowStretch(0, 1)
         grid.setRowStretch(1, 2)
@@ -608,9 +590,8 @@ class HistoryPage(QWidget):
 
             with open(file_path,'r',encoding='utf-8') as f:
                 dataList = []
-                total_names = ['AX','AY','AZ','GX','GY','GZ','CO2','TVOC','温度','湿度','压强']
-                mpu_dist = {'AX':{'times':[],'values':[]},'AY':{'times':[],'values':[]},'AZ':{'times':[],'values':[]},
-                            'GX':{'times':[],'values':[]},'GY':{'times':[],'values':[]},'GZ':{'times':[],'values':[]}}
+                total_names = ['LIGHT','CO2','TVOC','温度','湿度','压强']
+                bh_dist = {'LIGHT':{'times':[],'values':[]}}
                 gas_dist = {'CO2':{'times':[],'values':[]},'TVOC':{'times':[],'values':[]}}
                 thp_dist = {'温度':{'times':[],'values':[]},'湿度':{'times':[],'values':[]},'压强':{'times':[],'values':[]}}
                 for line in f:
@@ -618,17 +599,18 @@ class HistoryPage(QWidget):
                     dataList.append([float(x) for x in line.strip().split(',')])
                 dataList = list(zip(*dataList))
                 for i, name in enumerate(total_names):
-                    if i < 6:
-                        mpu_dist[name]['times'] = dataList[0]
-                        mpu_dist[name]['values'] = dataList[i+1]
-                    if i > 5 and i < 8:
-                        gas_dist[name]['times'] = dataList[0]
-                        gas_dist[name]['values'] = dataList[i+1]
-                    if i > 7:
+                    if i < 3:
                         thp_dist[name]['times'] = dataList[0]
                         thp_dist[name]['values'] = dataList[i+1]
+                    elif i < 4 and i > 2:
+                        bh_dist[name]['times'] = dataList[0]
+                        bh_dist[name]['values'] = dataList[i+1]
+                    elif i > 4:
+                        gas_dist[name]['times'] = dataList[0]
+                        gas_dist[name]['values'] = dataList[i+1]
+                    
 
-                self.RegionPlot.load_mpu_history(mpu_dist)
+                self.RegionPlot.load_bh_history(bh_dist)
                 self.RegionPlot.load_gas_history(gas_dist)
                 self.RegionPlot.load_thp_history(thp_dist)
 
@@ -760,7 +742,7 @@ class AnalysisTab(QWidget):
     def initUI(self):
         self.main_layout = QVBoxLayout(self)
 
-        dataNames = ["AX","AY","AZ","GX","GY","GZ","CO2","TVOC","温度","湿度","压强"]
+        dataNames = ["温度","湿度","压强","LIGHT","CO2","TVOC",]
         valueNames = ['平均值','中位数','标准差']
         self.dataTable = QTableWidget()
         self.dataTable.setRowCount(30)
