@@ -24,17 +24,19 @@ class Homepage(QWidget):
 
         self.dataBuffer = []
 
-        self.labels = [self.LIGHT_label,
-                        self.CO2_label, self.TVOC_label,
-                        self.TEMP_label, self.HUM_label, self.PRESS_label]
+        self.labels = [self.TEMP_label, self.HUM_label, self.PRESS_label,
+                        self.LIGHT_label,
+                        self.CO2_label, self.TVOC_label
+                        ]
         
         for label in self.labels:
             label.setReadOnly(True)
         
-        self.dataNames = ["Light","CO2","TVOC","温度","湿度","压强"]
-        self.BH1750_Data = dict(zip(self.dataNames[0:1],[0 for i in range(1)]))
-        self.Gas_Data = dict(zip(self.dataNames[1:3],[0 for i in range(2)]))
-        self.THP_Data = dict(zip(self.dataNames[3:6],[0 for i in range(3)]))
+        self.dataNames = ["温度","湿度","压强","LIGHT","CO2","TVOC"]
+        self.THP_Data = dict(zip(self.dataNames[0:3],[0 for i in range(3)]))
+        self.BH1750_Data = dict(zip(self.dataNames[3:4],[0 for i in range(1)]))
+        self.Gas_Data = dict(zip(self.dataNames[4:6],[0 for i in range(2)]))
+        
 
         self.pathSave = "history"
 
@@ -154,9 +156,9 @@ class Homepage(QWidget):
             dataListStr = ["{:.2f}".format(x) for x in dataListInt]
             for i, data in enumerate(dataListStr):
                 self.labels[i].setText(data)
-            self.BH1750_Data = dict(zip(self.dataNames[0:1],dataListInt[3:4]))
-            self.Gas_Data = dict(zip(self.dataNames[1:3],dataListInt[4:6]))
-            self.THP_Data = dict(zip(self.dataNames[3:6],dataListInt[0:3]))
+            self.BH1750_Data = dict(zip(self.dataNames[3:4],dataListInt[3:4]))
+            self.Gas_Data = dict(zip(self.dataNames[4:6],dataListInt[4:6]))
+            self.THP_Data = dict(zip(self.dataNames[0:3],dataListInt[0:3]))
             self.RegionPlot.update_bh(self.BH1750_Data)
             self.RegionPlot.update_gas(self.Gas_Data)
             self.RegionPlot.update_thp(self.THP_Data)
@@ -590,7 +592,7 @@ class HistoryPage(QWidget):
 
             with open(file_path,'r',encoding='utf-8') as f:
                 dataList = []
-                total_names = ['LIGHT','CO2','TVOC','温度','湿度','压强']
+                total_names = ['温度','湿度','压强','LIGHT','CO2','TVOC']
                 bh_dist = {'LIGHT':{'times':[],'values':[]}}
                 gas_dist = {'CO2':{'times':[],'values':[]},'TVOC':{'times':[],'values':[]}}
                 thp_dist = {'温度':{'times':[],'values':[]},'湿度':{'times':[],'values':[]},'压强':{'times':[],'values':[]}}
@@ -602,7 +604,7 @@ class HistoryPage(QWidget):
                     if i < 3:
                         thp_dist[name]['times'] = dataList[0]
                         thp_dist[name]['values'] = dataList[i+1]
-                    elif i < 4 and i > 2:
+                    elif i < 4:
                         bh_dist[name]['times'] = dataList[0]
                         bh_dist[name]['values'] = dataList[i+1]
                     elif i > 4:
