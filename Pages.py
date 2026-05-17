@@ -140,14 +140,22 @@ class Homepage(QWidget):
     def sendText(self):
         try:
             if self.right_vertical.serState:
-                self.sendTextSignal.emit(self.sendline.text())
-                self.right_vertical.serThread.serial.write((self.sendline.text() + "\n").encode('utf-8'))
-                self.sendline.setText("")
+                data = self.sendline.text()
+                self.sendTextSignal.emit(f"发送: {data}")
+                if self.right_vertical.sendMode.isChecked():
+                    if all(c in "0123456789abcdefABCDEF " for c in data):
+                        data_bytes = bytes.fromhex(data)
+                        self.right_vertical.serThread.serial.write(data_bytes)
+                    else:
+                        raise Exception("非十六进制字符串")
+                else:
+                    self.right_vertical.serThread.serial.write(data.encode('utf-8'))
+                #self.sendline.setText("")
             else:
                 self.sendTextSignal.emit("尚未连接")
                 self.sendline.setText("")
         except Exception as e:
-            self.sendErrorSignal.emit(e)
+            self.sendErrorSignal.emit(str(e))
 
     def updateDataDisplay(self,dataText:str):
         try:
@@ -330,6 +338,7 @@ class CommandPanel(QWidget):
         # self.autosaveIntervalLineEdit = QLineEdit()
         self.autosaveIntervalButton = QPushButton("设置")
         self.sensorDisplayCheckbox = QCheckBox("显示仪表盘")
+        self.sendMode = QCheckBox("发送Bytes")
         self.TextCopy = QTextEdit()
         self.TextCopy.setReadOnly(True)
         
@@ -354,15 +363,18 @@ class CommandPanel(QWidget):
         self.autosaveCheckBox.setChecked(True)  # 默认启用自动保存
         # self.autosaveIntervalLineEdit.setText("60")  # 默认自动保存间隔
 
-        self.gridlayout.addWidget(self.sensorDisplayCheckbox,5,0,1,2)
+        self.gridlayout.addWidget(self.sendMode, 5, 1)
+        self.sendMode.setChecked(True)
+
+        self.gridlayout.addWidget(self.sensorDisplayCheckbox,6,0,1,2)
         self.sensorDisplayCheckbox.setChecked(True)
 
-        self.gridlayout.addWidget(self.TextCopy,6,0,1,2)
+        self.gridlayout.addWidget(self.TextCopy,7,0,1,2)
 
         self.gridlayout.setColumnStretch(0, 4)
         self.gridlayout.setColumnStretch(1, 0)
         self.gridlayout.setColumnStretch(2, 0)
-        self.gridlayout.setRowStretch(6, 1)  # 添加伸缩项，推送内容到顶部
+        self.gridlayout.setRowStretch(7, 1)  # 添加伸缩项，推送内容到顶部
 
     def FillcomboxPorts(self):
         self.selectPortComboBox.clear()
