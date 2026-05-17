@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QTableWidget, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
                             QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox,
-                            QCalendarWidget, QDialog, QStyle, QTableWidgetItem)
+                            QCalendarWidget, QDialog, QStyle, QTableWidgetItem, QSplitter, QInputDialog)
 from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDate
 from serial.tools import list_ports
 from Serial import SerialThread
@@ -655,8 +655,13 @@ class SettingsPage(QWidget):
     pathSaveSignal = Signal(str)
     styleSignal = Signal(str)
 
+    tmpConfig = {}  # 临时配置字典，用于存储当前设置
+    sensor_config = {}  # 存储传感器配置的字典
+
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        
 
         self.dialog = QFileDialog()
         self.dialog.setWindowTitle("请选择文件夹")
@@ -674,11 +679,25 @@ class SettingsPage(QWidget):
         self.initUI()
 
     def initUI(self):
-        layout = QGridLayout(self)
-        nowDir = os.getcwd()
 
+        self.main_layout = QVBoxLayout(self)
+        self.tabWidget = QTabWidget()
+        self.main_layout.addWidget(self.tabWidget)
+    
+        tab_sensor = QWidget()
+        tab_sensor_layout = QGridLayout(tab_sensor)
+        tab_custom = QWidget()
+        tab_custom_layout = QGridLayout(tab_custom)
+
+        self.tabWidget.addTab(tab_sensor,"数据设置")
+        self.tabWidget.addTab(tab_custom,"界面设置")
+        
+        #############
+        # 数据设置页 #
+        #############
         pathLabel = QLabel("数据保存目录")
         self.pathLineEdit = QLineEdit()
+        nowDir = os.getcwd()
         self.pathLineEdit.setText(f"{nowDir}\\history")
         self.browserFileBtn = QPushButton()
         self.browserFileBtn.setText("浏览...")
@@ -686,11 +705,53 @@ class SettingsPage(QWidget):
         self.pathBtn = QPushButton()
         self.pathBtn.setText("设置")
         self.pathBtn.clicked.connect(self.on_pathBtn_click)
-        layout.addWidget(pathLabel,0,0)
-        layout.addWidget(self.pathLineEdit,1,0)
-        layout.addWidget(self.browserFileBtn,1,1)
-        layout.addWidget(self.pathBtn,1,2)
+        tab_sensor_layout.addWidget(pathLabel,0,0)
+        tab_sensor_layout.addWidget(self.pathLineEdit,1,0)
+        tab_sensor_layout.addWidget(self.browserFileBtn,1,1)
+        tab_sensor_layout.addWidget(self.pathBtn,1,2)
+        
+        # 配置传感器类型和数据格式等设置项（可扩展）
+        self.action_hbox = QHBoxLayout()
+        self.action_add_btn = QPushButton("添加传感器")
+        self.action_remove_btn = QPushButton("移除当前传感器")
+        self.action_add_data_btn = QPushButton("添加数据项")
+        self.action_remove_data_btn = QPushButton("移除当前数据项")
+        self.action_reset_btn = QPushButton("重置配置")
+        self.action_clear_btn = QPushButton("清除配置")
+        self.action_hbox.addWidget(self.action_add_btn)
+        self.action_hbox.addWidget(self.action_remove_btn)
+        self.action_hbox.addWidget(self.action_add_data_btn)
+        self.action_hbox.addWidget(self.action_remove_data_btn)
+        self.action_hbox.addWidget(self.action_reset_btn)
+        self.action_hbox.addWidget(self.action_clear_btn)
+        tab_sensor_layout.addLayout(self.action_hbox,2,0,1,3)
 
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.sensor_list = QListWidget()
+        self.data_list = QListWidget()
+        self.splitter.addWidget(self.sensor_list)
+        self.splitter.addWidget(self.data_list)
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 4)
+        tab_sensor_layout.addWidget(self.splitter,3,0,1,3)
+
+        self.action_apply_btn = QPushButton("应用配置")
+        tab_sensor_layout.addWidget(self.action_apply_btn,4,0,1,3)
+
+        tab_sensor_layout.setRowStretch(5,1)
+
+        # 信号绑定
+        self.action_add_btn.clicked.connect(self.add_sensor)
+        self.action_remove_btn.clicked.connect(self.del_sensor)
+        self.action_add_data_btn.clicked.connect(self.add_data)
+        self.action_remove_data_btn.clicked.connect(self.del_data)
+        self.action_reset_btn.clicked.connect(self.reset_config)
+        self.action_clear_btn.clicked.connect(self.clear_config)
+        self.action_apply_btn.clicked.connect(self.save_config)
+
+        #############
+        # 界面设置页 #
+        #############
         self.styleCombobox = QComboBox()
         style_dict = {
             '深琥珀'     : 'dark_amber.xml',
@@ -724,15 +785,92 @@ class SettingsPage(QWidget):
         self.styleCombobox.addItems(style_dict.keys())
         self.styleApply = QPushButton("应用")
         self.styleApply.clicked.connect(lambda:self.styleSignal.emit(style_dict[self.styleCombobox.currentText()]))
-        layout.addWidget(self.styleCombobox,2,0)
-        layout.addWidget(self.styleApply,2,1)
+        tab_custom_layout.addWidget(self.styleCombobox,2,0)
+        tab_custom_layout.addWidget(self.styleApply,2,1)
         
-        layout.setColumnStretch(0,1)
-        layout.setRowStretch(3,1)
+        tab_custom_layout.setColumnStretch(0,1)
+        tab_custom_layout.setRowStretch(3,1)
 
     def on_pathBtn_click(self):
         directory = self.pathLineEdit.text().strip()
         self.pathSaveSignal.emit(directory)
+
+    ############ 动态传感器配置 ##################
+    # ------------------------ 功能实现 ------------------------
+    def add_sensor(self):
+        name, ok = QInputDialog.getText(self, "增加传感器", "输入传感器名称:")
+        if ok and name.strip():
+            if name in self.tmpConfig:
+                QMessageBox.warning(self, "错误", "传感器已存在")
+                return
+            self.tmpConfig[name] = []
+            self.update_display()
+
+    def del_sensor(self):
+        if not self.tmpConfig:
+            QMessageBox.warning(self, "提示", "没有传感器可删除")
+            return
+        sensor, ok = QInputDialog.getItem(self, "删除传感器", "选择传感器:", list(self.tmpConfig.keys()), 0, False)
+        if ok:
+            self.tmpConfig.pop(sensor)
+            self.update_display()
+
+    def add_data(self):
+        if not self.tmpConfig:
+            QMessageBox.warning(self, "提示", "请先添加传感器")
+            return
+        # 选择传感器
+        sensor, ok = QInputDialog.getItem(self, "选择传感器", "选择传感器:", list(self.tmpConfig.keys()), 0, False)
+        if ok:
+            # 输入数据名字
+            data_name, ok_name = QInputDialog.getText(self, "数据名字", "输入数据名称:")
+            if ok_name and data_name.strip():
+                # 输入单位
+                unit, ok_unit = QInputDialog.getText(self, "数据单位", "输入单位:")
+                if ok_unit:
+                    entry = f"{data_name}({unit})"
+                    self.tmpConfig[sensor].append(entry)
+                    self.update_display()
+
+    def del_data(self):
+        if not self.tmpConfig:
+            QMessageBox.warning(self, "提示", "没有数据可删除")
+            return
+        # 选择传感器
+        sensor, ok = QInputDialog.getItem(self, "选择传感器", "选择传感器:", list(self.tmpConfig.keys()), 0, False)
+        if ok:
+            if not self.tmpConfig[sensor]:
+                QMessageBox.warning(self, "提示", "该传感器没有数据可删除")
+                return
+            # 选择数据
+            data, ok_data = QInputDialog.getItem(self, "删除数据", "选择数据:", self.tmpConfig[sensor], 0, False)
+            if ok_data:
+                self.tmpConfig[sensor].remove(data)
+                self.update_display()
+
+    def reset_config(self):
+        self.tmpConfig = self.sensor_config.copy()
+        self.update_display()
+
+    def clear_config(self):
+        self.tmpConfig.clear()
+        self.update_display()
+
+    def save_config(self):
+        self.sensor_config = {k: v.copy() for k, v in self.tmpConfig.items()}
+        QMessageBox.information(self, "保存成功", "配置已保存")
+
+    # ------------------------ 更新显示 ------------------------
+    def update_display(self):
+        self.sensor_list.clear()
+        self.data_list.clear()
+        for sensor, data_list in self.tmpConfig.items():
+            self.sensor_list.addItem(sensor)
+            self.data_list.addItem(", ".join(data_list))
+
+
+
+    #############################################
     
     def select_folder(self):
         last_path = self.pathLineEdit.text() if self.pathLineEdit.text() else os.getcwd()
