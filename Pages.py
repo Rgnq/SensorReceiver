@@ -141,7 +141,7 @@ class Homepage(QWidget):
         try:
             if self.right_vertical.serState:
                 self.sendTextSignal.emit(self.sendline.text())
-                self.right_vertical.serThread.serial.write(self.sendline.text()+"\n")
+                self.right_vertical.serThread.serial.write((self.sendline.text() + "\n").encode('utf-8'))
                 self.sendline.setText("")
             else:
                 self.sendTextSignal.emit("尚未连接")
