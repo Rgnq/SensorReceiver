@@ -2,10 +2,11 @@ from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QT
                             QToolButton, QSpacerItem, QSizePolicy, QGridLayout, QComboBox, QPushButton, 
                             QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox, QCalendarWidget, 
                             QDialog, QStyle, QTableWidgetItem, QSplitter, QInputDialog, QScrollArea, QFrame,
-                            QStackedWidget, QMenu)
-from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDate, Slot
+                            QStackedWidget, QMenu, QDateTimeEdit)
+from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDateTime, Slot
 from serial.tools import list_ports
-import os, json, time
+import os, json, datetime
+import pyqtgraph as pg
 
 from Serial import SerialThread
 from PlotWidget import MultiPlotWidget
@@ -360,236 +361,231 @@ class CommandPanel(QWidget):
 
 
 class HistoryPage(QWidget):
-    errorSignal = Signal(str)
+    def __init__(self):
+        super().__init__()
+        self.db = SensorDB()
+        self.init_ui()
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.msg = QMessageBox()
-        self.msg.setOption(QMessageBox.DontUseNativeDialog, True)
-        self.msg.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
-
-        self.dialog = QFileDialog()
-        self.dialog.setWindowTitle("请选择文件夹")
-        self.dialog.setFileMode(QFileDialog.FileMode.Directory)
-        self.dialog.setStyleSheet('''
-                    * {
-                        padding: 0px;
-                        border: 0px;
-                        margin: 0px;
-                        }    
-                    ''')
-        self.dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        self.dialog.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
-        
-        self.initUI()
-    
-    def initUI(self):
-        nowDir = os.getcwd()
-
+    def init_ui(self):
         main_layout = QVBoxLayout(self)
-        top_layout = QHBoxLayout()
-        self.pathSaveLineEdit = QLineEdit()
-        self.pathSaveLineEdit.setText(f"{nowDir}\\history")
-        self.browserFileBtn = QPushButton()
-        self.browserFileBtn.setText("浏览...")
-        self.browserFileBtn.clicked.connect(self.select_folder)
-        self.pathBtnConfirm = QPushButton()
-        self.pathBtnConfirm.setText("检索")
-        self.pathBtnConfirm.clicked.connect(self.load_files)
-        top_layout.addWidget(self.pathSaveLineEdit,1)
-        top_layout.addWidget(self.browserFileBtn)
-        top_layout.addWidget(self.pathBtnConfirm)
-        main_layout.addLayout(top_layout)
 
-        date_layout = QHBoxLayout()
-        self.calendarButton = QPushButton()
-        self.calendarButton.setText("选择日期")
-        self.calendarButton.clicked.connect(self.show_date_picker)
-        self.DateLabel = QLineEdit()
-        self.DateLabel.setReadOnly(True)
-        self.DateLabel.setText(QDate.currentDate().toString(Qt.DateFormat.ISODate))
-        # self.YearDate = QComboBox()
-        # self.MonthDate = QComboBox()
-        # self.DayDate = QComboBox()
+        # 上下分割
+        splitter = QSplitter(Qt.Vertical)
+        main_layout.addWidget(splitter)
 
-        self.DateCheck = QCheckBox()
-        self.DateCheck.setText("启用")
-        date_layout.addWidget(self.calendarButton)
-        date_layout.addWidget(self.DateLabel,1)
-        # date_layout.addWidget(self.YearDate,1)
-        # date_layout.addWidget(self.MonthDate,1)
-        # date_layout.addWidget(self.DayDate,1)
-        date_layout.addWidget(self.DateCheck)
-        main_layout.addLayout(date_layout)
+        # 上部分：筛选与操作
+        top_widget = QWidget()
+        top_layout = QGridLayout(top_widget)
 
-        self.tabWidget = QTabWidget()
-        main_layout.addWidget(self.tabWidget)
+        # 时间筛选
+        self.chk_time = QCheckBox("启用时间筛选")
+        self.dt_start = QDateTimeEdit(QDateTime.currentDateTime())
+        self.dt_end = QDateTimeEdit(QDateTime.currentDateTime())
+        top_layout.addWidget(self.chk_time, 0, 0)
+        top_layout.addWidget(QLabel("开始时间:"), 0, 1)
+        top_layout.addWidget(self.dt_start, 0, 2)
+        top_layout.addWidget(QLabel("结束时间:"), 0, 3)
+        top_layout.addWidget(self.dt_end, 0, 4)
+
+        # 数据类型和传感器下拉框
+        self.chk_category = QCheckBox("启用传感器类型")
+        self.cmb_category = QComboBox()
+        self.cmb_category.addItem("所有")
+        self.chk_sensor = QCheckBox("启用传感器")
+        self.cmb_sensor = QComboBox()
+        self.cmb_sensor.addItem("所有")
+
+        top_layout.addWidget(self.chk_category, 2, 0)
+        top_layout.addWidget(self.cmb_category, 2, 1)
+        top_layout.addWidget(self.chk_sensor, 2, 3)
+        top_layout.addWidget(self.cmb_sensor, 2, 4)
+
+        # 查询按钮
+        self.btn_latest = QPushButton("查询最新记录")
+        self.btn_all = QPushButton("查询所有记录")
+        self.btn_filter = QPushButton("查询筛选条件下的记录")
+
+        top_layout.addWidget(self.btn_latest, 3, 0)
+        top_layout.addWidget(self.btn_all, 3, 1)
+        top_layout.addWidget(self.btn_filter, 3, 2)
+
+        splitter.addWidget(top_widget)
+
+        # 下半部分：TabWidget 查询结果 + 日志
+        bottom_tab = QTabWidget()
+        splitter.addWidget(bottom_tab)
+        splitter.setStretchFactor(1, 1)
         
-        localHistory_tab = QWidget()
-        localHistory_layout = QVBoxLayout()
-        localHistory_tab.setLayout(localHistory_layout)
-        self.localListWidget = QListWidget()
-        localHistory_layout.addWidget(self.localListWidget)
-        self.tabWidget.addTab(localHistory_tab,"选择数据")
+        # 查询结果Tab
+        self.tab_result = QWidget()
+        bottom_tab.addTab(self.tab_result, "查询结果")
+        bottom_layout = QHBoxLayout(self.tab_result)
 
-        self.DataPreview_tab = QTableWidget()
-        self.DataPreview_tab.setStyleSheet("* {border-radius: 0px;}")
-        self.tabWidget.addTab(self.DataPreview_tab,"预览数据")
+        # 左右分割（左传感器列表，右StackWidget）
+        self.result_splitter = QSplitter(Qt.Horizontal)
+        bottom_layout.addWidget(self.result_splitter)
 
-        self.DataAnalysis = AnalysisTab()
-        self.DataAnalysis.setStyleSheet("* {border-radius: 0px;}")
-        self.tabWidget.addTab(self.DataAnalysis,"统计")
-        
-        self.plotBtn = QPushButton()
-        self.plotBtn.setText("绘制图像")
-        self.plotBtn.clicked.connect(self.plotData)
-        main_layout.addWidget(self.plotBtn)
+        self.list_sensors = QListWidget()
+        self.result_splitter.addWidget(self.list_sensors)
 
-        self.RegionPlot = MultiPlotWidget(plot_infos=[{"name": "温度", "unit": "°C"}, {"name": "湿度", "unit": "%"}])
-        self.RegionPlot.setStyleSheet("* {border-radius: 0px;}")
-        main_layout.addWidget(self.RegionPlot,1)
+        self.stack_sensors = QStackedWidget()
+        self.result_splitter.addWidget(self.stack_sensors)
+        self.result_splitter.setStretchFactor(1, 3)
 
-    # def select_folder(self):
-    #     dialog = QFileDialog()
-    #     dialog.setWindowTitle("请选择文件夹")
-    #     dialog.setFileMode(QFileDialog.FileMode.Directory)
-    #     dialog.setStyleSheet('''
-    #                 * {
-    #                     padding: 0px;
-    #                     border: 0px;
-    #                     margin: 0px;
-    #                     }    
-    #                 ''')
-    #     dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-    #     dialog.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
+        # 日志Tab
+        self.tab_log = QTextEdit()
+        self.tab_log.setReadOnly(True)
+        bottom_tab.addTab(self.tab_log, "日志")
 
-    #     if self.pathSaveLineEdit.text():
-    #         dialog.setDirectory(self.pathSaveLineEdit.text())
-    #     else:
-    #         dialog.setDirectory(os.getcwd())
+        # 事件绑定
+        self.btn_latest.clicked.connect(self.query_latest)
+        self.btn_all.clicked.connect(self.query_all)
+        self.btn_filter.clicked.connect(self.query_filtered)
 
-    #     if dialog.exec():
-    #         self.pathSaveLineEdit.setText(dialog.selectedFiles()[0])
+        # 初始化下拉框
+        self.update_comboboxes()
 
-    def select_folder(self):
-        last_path = self.pathSaveLineEdit.text() if self.pathSaveLineEdit.text() else os.getcwd()
-        # 弹出文件夹选择对话框
-        folder_path = QFileDialog.getExistingDirectory(
-            self.dialog,                    # 父窗口
-            "请选择文件夹",           # 标题
-            last_path,    # 默认打开的路径（上一次选择的路径）
-            QFileDialog.DontUseNativeDialog
-        )
+    # ---------------- 工具函数 ----------------
+    def log(self, text):
+        self.tab_log.append(text)
 
-        if folder_path:
-            self.pathSaveLineEdit.setText(folder_path)
+    def update_comboboxes(self):
+        categories = self.db.query_by_time("2000-01-01 00:00:00", "2100-01-01 00:00:00").keys()
+        self.cmb_category.clear()
+        self.cmb_category.addItem("所有")
+        self.cmb_category.addItems(categories)
 
-    def show_date_picker(self):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("选择日期")
-        dialog.setWindowIcon(self.style().standardIcon(QStyle.SP_DirHomeIcon))
-        dialog.setModal(True)
-        
-        calendar = QCalendarWidget()
-        calendar.setGridVisible(True)
-        # 可选：默认选中今天
-        calendar.setSelectedDate(QDate.currentDate())
-        
-        ok_btn = QPushButton("确定")
-        ok_btn.clicked.connect(lambda: self.on_date_selected(calendar, dialog))
-        
-        layout = QVBoxLayout(dialog)
-        layout.addWidget(calendar)
-        layout.addWidget(ok_btn)
-        
-        dialog.resize(640, 280)
-        dialog.exec()
-    
-    def on_date_selected(self, calendar, dialog):
-        date = calendar.selectedDate()
-        date_str = date.toString("yyyy-MM-dd")
-        self.DateLabel.setText(date_str)
-        dialog.accept()
-    
-    def load_files(self):
-        data_files = []
-        self.directory = self.pathSaveLineEdit.text().strip()
-        if not os.path.isdir(self.directory):
-            self.msg.warning(self.msg, "Error", "无效目录路径")
-            return
+        sensor_names = set()
+        for cat in categories:
+            sensor_names.update(self.db.query_by_time("2000-01-01 00:00:00", "2100-01-01 00:00:00", category=cat).get(cat, {}).keys())
+        self.cmb_sensor.clear()
+        self.cmb_sensor.addItem("所有")
+        self.cmb_sensor.addItems(sensor_names)
 
-        self.localListWidget.clear()
-        files = [f for f in os.listdir(self.directory) if os.path.isfile(os.path.join(self.directory, f))]
-        # Filter for data files, e.g., .csv or .db; assuming .csv for now.
-        data_files = [f for f in files if f.endswith('.csv')]  # Change to '.db' for SQLite
-        if self.DateCheck.isChecked():
-            date = '_'.join(self.DateLabel.text().split("-"))
-            data_files[:] = [f for f in data_files if f.startswith("localsave_") and f[10:20] == date]
-        if not data_files:
-            self.msg.information(self.msg, "Info", "无数据记录")
-            return
+    def clear_results(self):
+        self.list_sensors.clear()
+        while self.stack_sensors.count() > 0:
+            widget = self.stack_sensors.widget(0)
+            self.stack_sensors.removeWidget(widget)
+            widget.deleteLater()
 
-        self.localListWidget.addItems(data_files)
-    
-    def plotData(self):
-        selected_items = self.localListWidget.selectedItems()
-        if not selected_items:
-            self.msg.information(self.msg, "Info", "未选中数据")
-            return
+    def format_latest_results(self, rows):
+        """list -> dict {category: {sensor: [(ts,value)]}}"""
+        result = {}
+        for cat, sensor_name, unit, value, ts in rows:
+            result.setdefault(cat, {}).setdefault(sensor_name, []).append((ts, value))
+        return result
 
-        selected_file = selected_items[0].text()
-        file_path = os.path.join(self.directory, selected_file)
+    def get_filter_conditions(self):
+        category = self.cmb_category.currentText() if self.chk_category.isChecked() and self.cmb_category.currentText() != "所有" else None
+        sensor = self.cmb_sensor.currentText() if self.chk_sensor.isChecked() and self.cmb_sensor.currentText() != "所有" else None
+        start = self.dt_start.dateTime().toPython() if self.chk_time.isChecked() else None
+        end = self.dt_end.dateTime().toPython() if self.chk_time.isChecked() else None
+        return category, sensor, start, end
 
-        try:
+    # ---------------- 查询功能 ----------------
+    def query_latest(self):
+        self.clear_results()
+        category, sensor, start, end = self.get_filter_conditions()
+        rows = self.db.query_latest(category=category, sensor_name=sensor)
+        self.log(f"【原始数据】{rows}")  # 输出原始结果
+        results = self.format_latest_results(rows)
+        self.display_results(results)
 
-            with open(file_path,'r',encoding='utf-8') as f:
-                dataList = []
-                total_names = ['温度','湿度','压强','LIGHT','CO2','TVOC']
-                bh_dist = {'LIGHT':{'times':[],'values':[]}}
-                gas_dist = {'CO2':{'times':[],'values':[]},'TVOC':{'times':[],'values':[]}}
-                thp_dist = {'温度':{'times':[],'values':[]},'湿度':{'times':[],'values':[]},'压强':{'times':[],'values':[]}}
-                for line in f:
-                    #dataList.append(list(map(eval, line.strip().split(','))))
-                    dataList.append([float(x) for x in line.strip().split(',')])
-                dataList = list(zip(*dataList))
-                for i, name in enumerate(total_names):
-                    if i < 3:
-                        thp_dist[name]['times'] = dataList[0]
-                        thp_dist[name]['values'] = dataList[i+1]
-                    elif i < 4:
-                        bh_dist[name]['times'] = dataList[0]
-                        bh_dist[name]['values'] = dataList[i+1]
-                    elif i > 4:
-                        gas_dist[name]['times'] = dataList[0]
-                        gas_dist[name]['values'] = dataList[i+1]
-                    
+    def query_all(self):
+        self.clear_results()
+        category, sensor, start, end = self.get_filter_conditions()
+        results = self.db.query_by_time("2000-01-01 00:00:00", "2100-01-01 00:00:00", category=category, sensor_name=sensor)
+        self.log(f"【原始数据】{results}")  # 输出原始结果
+        self.display_results(results)
 
-                self.RegionPlot.load_bh_history(bh_dist)
-                self.RegionPlot.load_gas_history(gas_dist)
-                self.RegionPlot.load_thp_history(thp_dist)
+    def query_filtered(self):
+        self.clear_results()
+        category, sensor, start, end = self.get_filter_conditions()
+        start = start or datetime(2000,1,1)
+        end = end or datetime(2100,1,1)
+        results = self.db.query_by_time(start, end, category=category, sensor_name=sensor)
+        self.log(f"【原始数据】{results}")  # 输出原始结果
+        self.display_results(results)
 
-                space = 10
-                self.DataPreview_tab.setRowCount(len(dataList[0])+space)
-                self.DataPreview_tab.setColumnCount(len(dataList)+space)
-                self.DataPreview_tab.setHorizontalHeaderLabels(['时间',*total_names,*['' for x in range(space)]])
+    # ---------------- 创建美化统计Tab ----------------
+    def create_stats_tab(self, stats_dict):
+        stats_widget = QWidget()
+        layout = QVBoxLayout(stats_widget)
+        layout.setSpacing(10)
+        stat_translations = {
+            "count": "计数",
+            "min": "最小值",
+            "max": "最大值",
+            "sum": "求和",
+            "avg": "平均值",
+            "median": "中位数",
+            "variance": "方差",
+            "stddev": "标准差",
+            "first": "首值",
+            "last": "末值"
+        }
+        for key, value in stats_dict.items():
+            label = QLabel(f"{stat_translations.get(key, key)}: {value}")
+            label.setStyleSheet("""
+                QLabel {
+                    background-color: #2c2c2c;
+                    color: #ffffff;
+                    border: 1px solid #555;
+                    border-radius: 5px;
+                    padding: 5px;
+                    font-weight: bold;
+                }
+            """)
+            layout.addWidget(label)
+        layout.addStretch()
+        return stats_widget
 
-                previewDataList = [[str(i) for i in x] for x in dataList]
-                #previewDataList[0] = list(map(lambda x:time.strftime("%Y-%m-%d %H:%M:%S",x), map(time.localtime,map(eval,previewDataList[0]))))
-                previewDataList[0] = [time.strftime("%Y-%m-%d %H:%M:%S",i) for i in [time.localtime(x) for x in dataList[0]]]
+    # ---------------- 显示结果 ----------------
+    def display_results(self, results):
+        self.update_comboboxes()
+        for cat, sensors in results.items():
+            for sensor_name, data_list in sensors.items():
+                self.list_sensors.addItem(sensor_name)
 
-                for column in range(len(previewDataList)):
-                    for row in range(len(previewDataList[column])):
-                        self.DataPreview_tab.setItem(row,column,QTableWidgetItem(previewDataList[column][row]))
+                # 右侧滚动区
+                scroll_area = QScrollArea()
+                scroll_area.setWidgetResizable(True)
+                container = QWidget()
+                scroll_layout = QVBoxLayout(container)
+                container.setLayout(scroll_layout)
+                scroll_area.setWidget(container)
 
-                self.DataPreview_tab.resizeColumnsToContents()
+                tab_widget = QTabWidget()
+                scroll_layout.addWidget(tab_widget)
 
-                analysisDataList = dataList.copy()
-                analysisDataList.pop(0)
-                self.DataAnalysis.analysisData(analysisDataList)
-            
-        except Exception as e:
-            self.msg.warning(self.msg, "Error", f"Failed to load data: {str(e)}")
+                # 图像Tab
+                plot_tab = pg.PlotWidget()
+                if data_list:
+                    ts, vals = zip(*data_list)
+                    plot_tab.plot(list(range(len(vals))), vals, pen='r')
+                tab_widget.addTab(plot_tab, "图像")
+
+                # 统计信息Tab
+                stats = self.db.stats_by_time("2000-01-01 00:00:00","2100-01-01 00:00:00", category=cat, sensor_name=sensor_name)
+                stats_tab = self.create_stats_tab(stats.get(cat, {}).get(sensor_name, {}))
+                tab_widget.addTab(stats_tab, "统计信息")
+
+                # 表格Tab
+                table_tab = QTableWidget()
+                table_tab.setRowCount(len(data_list))
+                table_tab.setColumnCount(2)
+                table_tab.setHorizontalHeaderLabels(["时间", "值"])
+                for i, (ts, val) in enumerate(data_list):
+                    table_tab.setItem(i, 0, QTableWidgetItem(str(ts)))
+                    table_tab.setItem(i, 1, QTableWidgetItem(str(val)))
+                tab_widget.addTab(table_tab, "表格")
+
+                self.stack_sensors.addWidget(scroll_area)
+
+        if self.list_sensors.count() > 0:
+            self.list_sensors.setCurrentRow(0)
+            self.list_sensors.currentRowChanged.connect(lambda idx: self.stack_sensors.setCurrentIndex(idx))
  
 
 class SettingsPage(QWidget):
