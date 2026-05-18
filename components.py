@@ -231,7 +231,7 @@ class DataReceiverParse:
             for sensor, data_list in self.sensor_config.items():
                 for data_info in data_list:
                     if index < len(data_entries):
-                        value_str = data_entries[index].strip()
+                        value_str = data_entries[index].replace('\r', '').replace('\n', '').strip()
                         value = float(value_str) if value_str else 0
                         if sensor not in data_dict:
                             data_dict[sensor] = []

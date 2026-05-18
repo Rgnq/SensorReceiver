@@ -284,6 +284,7 @@ class CommandPanel(QWidget):
         # self.autosaveIntervalLineEdit = QLineEdit()
         self.autosaveIntervalButton = QPushButton("设置")
         self.sendMode = QCheckBox("发送Bytes")
+        self.debugmode = QCheckBox("调试模式")
         self.TextCopy = QTextEdit()
         self.TextCopy.setReadOnly(True)
         
@@ -298,6 +299,8 @@ class CommandPanel(QWidget):
 
 
         self.gridlayout.addWidget(QLabel("波特率"), 2, 0)
+        self.gridlayout.addWidget(self.debugmode, 2, 1)
+        self.debugmode.stateChanged.connect(self.toggleDEBUG)
         self.gridlayout.addWidget(self.BaudrateLineEdit, 3, 0)
         self.BaudrateLineEdit.setText("9600")  # 默认波特率
 
@@ -345,6 +348,14 @@ class CommandPanel(QWidget):
             self.serState = True
         except Exception as e:
             self.serDataSignal.emit(f"Error: {e}")
+
+    def toggleDEBUG(self, state):
+        if state:
+            SerialThread.DEBUG = True
+            self.serLogSignal.emit("调试模式已启用")
+        else:
+            SerialThread.DEBUG = False
+            self.serLogSignal.emit("调试模式已禁用")
         
     def stopSerialThread(self):
         if self.serState:
