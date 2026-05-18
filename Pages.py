@@ -2,15 +2,15 @@ from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QT
                             QToolButton, QSpacerItem, QSizePolicy, QGridLayout, QComboBox, QPushButton, 
                             QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox, QCalendarWidget, 
                             QDialog, QStyle, QTableWidgetItem, QSplitter, QInputDialog, QScrollArea, QFrame,
-                            QStackedWidget)
+                            QStackedWidget, QMenu)
 from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDate, Slot
 from serial.tools import list_ports
 import os, json, time
 
 from Serial import SerialThread
 from PlotWidget import SensorPlotter
-from components import SensorDisplayWidget
-from styles import HOMEPAGE_STYLE
+from components import SensorDisplayWidget, DataModifyDialog
+import styles
 
 class Homepage(QWidget):
     sendTextSignal = Signal(str)
@@ -157,6 +157,12 @@ class Homepage(QWidget):
             self.sensor_list.addItem(f"{sensor}")
             page = self._create_sensor_page(data_list)
             self.right_stack.addWidget(page)
+
+    def on_sensor_config_updated(self):
+        if os.path.exists("sensor_config.json"):
+            with open("sensor_config.json", "r", encoding="utf-8") as f:
+                self.sensor_config = json.load(f)
+                self.update_sensor_config(self.sensor_config)
     
     def _create_sensor_page(self, data_list: list):
         page = QWidget()
@@ -560,7 +566,7 @@ class HistoryPage(QWidget):
 class SettingsPage(QWidget):
     pathSaveSignal = Signal(str)
     styleSignal = Signal(str)
-    sensor_config_signal = Signal(dict)
+    sensor_config_changed = Signal()
 
     tmpConfig = {}  # 临时配置字典，用于存储当前设置
     sensor_config = {}  # 存储传感器配置的字典
@@ -641,6 +647,12 @@ class SettingsPage(QWidget):
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setStretchFactor(1, 4)
         tab_sensor_layout.addWidget(self.splitter,3,0,1,3)
+        # ------------------------ 在初始化 UI 中添加右键菜单 ------------------------
+        self.sensor_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.sensor_list.customContextMenuRequested.connect(self.show_sensor_context_menu)
+        self.sensor_list.setDragDropMode(QListWidget.InternalMove)  # 支持拖动排序
+        self.sensor_list.setDefaultDropAction(Qt.MoveAction)
+        self.sensor_list.model().rowsMoved.connect(self.sensor_rows_moved)
 
         self.action_apply_btn = QPushButton("应用配置")
         tab_sensor_layout.addWidget(self.action_apply_btn,4,0,1,3)
@@ -667,35 +679,7 @@ class SettingsPage(QWidget):
         # 界面设置页 #
         #############
         self.styleCombobox = QComboBox()
-        style_dict = {
-            '深琥珀'     : 'dark_amber.xml',
-            '深蓝'       : 'dark_blue.xml',
-            '深青'       : 'dark_cyan.xml',
-            '深浅绿'     : 'dark_lightgreen.xml',
-            '深粉'       : 'dark_pink.xml',
-            '深紫'       : 'dark_purple.xml',
-            '深红'       : 'dark_red.xml',
-            '深青绿'     : 'dark_teal.xml',
-            '深黄'       : 'dark_yellow.xml',
-            
-            '浅琥珀'     : 'light_amber.xml',
-            '浅蓝'       : 'light_blue.xml',
-            '鲜浅蓝'   : 'light_blue_500.xml',
-            '浅青'       : 'light_cyan.xml',
-            '鲜浅青'   : 'light_cyan_500.xml',
-            '浅绿'       : 'light_lightgreen.xml',
-            '鲜浅绿'   : 'light_lightgreen_500.xml',
-            '浅橙'       : 'light_orange.xml',
-            '浅粉'       : 'light_pink.xml',
-            '鲜鲜浅粉'   : 'light_pink_500.xml',
-            '浅紫'       : 'light_purple.xml',
-            '鲜浅紫'   : 'light_purple_500.xml',
-            '浅红'       : 'light_red.xml',
-            '鲜浅红'   : 'light_red_500.xml',
-            '浅青绿'     : 'light_teal.xml',
-            '鲜浅青绿' : 'light_teal_500.xml',
-            '浅黄'       : 'light_yellow.xml',
-        }
+        style_dict = styles.material_styles_dict
         self.styleCombobox.addItems(style_dict.keys())
         self.styleApply = QPushButton("应用")
         self.styleApply.clicked.connect(lambda:self.styleSignal.emit(style_dict[self.styleCombobox.currentText()]))
@@ -775,8 +759,74 @@ class SettingsPage(QWidget):
         self.sensor_config = {k: v.copy() for k, v in self.tmpConfig.items()}
         with open("sensor_config.json", "w", encoding="utf-8") as f:
             json.dump(self.sensor_config, f, ensure_ascii=False, indent=4)
-        self.sensor_config_signal.emit(self.sensor_config)
+        self.sensor_config_changed.emit()
         QMessageBox.information(self, "保存成功", "配置已保存")
+    
+    # ------------------------ 右键菜单实现 ------------------------
+    # ------------------------ 新增方法 ------------------------
+    def show_sensor_context_menu(self, pos):
+        item = self.sensor_list.itemAt(pos)
+        if item is None:
+            return
+
+        menu = QMenu()
+        rename_action = menu.addAction("重命名传感器")
+        delete_action = menu.addAction("删除传感器")
+        modify_action = menu.addAction("修改数据")  # 修改为批量修改
+        action = menu.exec(self.sensor_list.mapToGlobal(pos))
+
+        if action == rename_action:
+            self.rename_sensor(item)
+        elif action == delete_action:
+            self.delete_sensor(item)
+        elif action == modify_action:
+            self.modify_data_dialog()
+
+    def rename_sensor(self, item):
+        old_name = item.text()
+        new_name, ok = QInputDialog.getText(self, "重命名传感器", "输入新名称:", text=old_name)
+        if ok and new_name.strip():
+            if new_name in self.tmpConfig:
+                QMessageBox.warning(self, "错误", "该名称已存在")
+                return
+            # 先保存顺序
+            keys = list(self.tmpConfig.keys())
+            values = list(self.tmpConfig.values())
+            index = keys.index(old_name)
+            # 修改键名
+            keys[index] = new_name
+            # 重建字典
+            self.tmpConfig = dict(zip(keys, values))
+            self.update_display()
+
+    def delete_sensor(self, item):
+        name = item.text()
+        reply = QMessageBox.question(self, "确认删除", f"确定删除传感器 {name} 吗？",
+                                    QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.tmpConfig.pop(name)
+            self.update_display()
+    
+    def modify_data_dialog(self):
+        # 找到当前传感器
+        sensor_row = self.sensor_list.currentRow()
+        if sensor_row < 0:
+            QMessageBox.warning(self, "提示", "请选择一个传感器")
+            return
+        sensor = self.sensor_list.item(sensor_row).text()
+        dialog = DataModifyDialog(self, sensor, self.tmpConfig[sensor])
+        if dialog.exec() == QDialog.Accepted:
+            # 更新 tmpConfig
+            self.tmpConfig[sensor] = dialog.data_list
+            self.update_display()
+
+    # ------------------------ 拖动排序实现 ------------------------
+    def sensor_rows_moved(self, parent, start, end, destination, row):
+        # 根据 QListWidget 的顺序重新排列 tmpConfig
+        new_order = [self.sensor_list.item(i).text() for i in range(self.sensor_list.count())]
+        # 用列表重建 tmpConfig 顺序
+        self.tmpConfig = {k: self.tmpConfig[k] for k in new_order}
+        self.update_display()
 
     # ------------------------ 更新显示 ------------------------
     def update_display(self):

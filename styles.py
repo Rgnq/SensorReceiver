@@ -151,3 +151,33 @@ QLabel {
     margin-bottom: 4px;
 }
 """
+
+material_styles_dict = {
+'深琥珀'     : 'dark_amber.xml',
+'深蓝'       : 'dark_blue.xml',
+'深青'       : 'dark_cyan.xml',
+'深浅绿'     : 'dark_lightgreen.xml',
+'深粉'       : 'dark_pink.xml',
+'深紫'       : 'dark_purple.xml',
+'深红'       : 'dark_red.xml',
+'深青绿'     : 'dark_teal.xml',
+'深黄'       : 'dark_yellow.xml',
+
+'浅琥珀'     : 'light_amber.xml',
+'浅蓝'       : 'light_blue.xml',
+'鲜浅蓝'   : 'light_blue_500.xml',
+'浅青'       : 'light_cyan.xml',
+'鲜浅青'   : 'light_cyan_500.xml',
+'浅绿'       : 'light_lightgreen.xml',
+'鲜浅绿'   : 'light_lightgreen_500.xml',
+'浅橙'       : 'light_orange.xml',
+'浅粉'       : 'light_pink.xml',
+'鲜鲜浅粉'   : 'light_pink_500.xml',
+'浅紫'       : 'light_purple.xml',
+'鲜浅紫'   : 'light_purple_500.xml',
+'浅红'       : 'light_red.xml',
+'鲜浅红'   : 'light_red_500.xml',
+'浅青绿'     : 'light_teal.xml',
+'鲜浅青绿' : 'light_teal_500.xml',
+'浅黄'       : 'light_yellow.xml',
+}

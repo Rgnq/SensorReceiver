@@ -19,6 +19,7 @@ class MainWindow(QMainWindow):
         self.Homepage.command_panel.serLogSignal.connect(self.LogError)
         self.LogPage.textedit.textChanged.connect(self.syncLog)
         self.SettingsPage.pathSaveSignal.connect(self.setSavePath)
+        self.SettingsPage.sensor_config_changed.connect(self.Homepage.on_sensor_config_updated)
     
     def initUI(self):
         self.initPages()
