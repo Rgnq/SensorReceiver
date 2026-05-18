@@ -31,6 +31,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("""
                 * {
                     font-family: 'Microsoft Yahei';
+                    font-size: 20px;
                     border-radius: 0px;
                 }
                 """)

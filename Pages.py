@@ -1,12 +1,12 @@
-from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QTableWidget, QHBoxLayout, QLabel, QToolButton, QSpacerItem,
-                            QSizePolicy, QGridLayout, QComboBox, QPushButton, QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox,
-                            QCalendarWidget, QDialog, QStyle, QTableWidgetItem, QSplitter, QInputDialog)
+from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QTableWidget, QHBoxLayout, QLabel, 
+                            QToolButton, QSpacerItem, QSizePolicy, QGridLayout, QComboBox, QPushButton, 
+                            QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox, QCalendarWidget, 
+                            QDialog, QStyle, QTableWidgetItem, QSplitter, QInputDialog)
 from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDate
 from serial.tools import list_ports
 from Serial import SerialThread
 from PlotWidget import SensorPlotter
-import os
-import time
+import os, json, time
 
 class Homepage(QWidget):
     sendTextSignal = Signal(str)
@@ -654,6 +654,7 @@ class HistoryPage(QWidget):
 class SettingsPage(QWidget):
     pathSaveSignal = Signal(str)
     styleSignal = Signal(str)
+    sensor_config_signal = Signal(dict)
 
     tmpConfig = {}  # 临时配置字典，用于存储当前设置
     sensor_config = {}  # 存储传感器配置的字典
@@ -738,7 +739,8 @@ class SettingsPage(QWidget):
         self.action_apply_btn = QPushButton("应用配置")
         tab_sensor_layout.addWidget(self.action_apply_btn,4,0,1,3)
 
-        tab_sensor_layout.setRowStretch(5,1)
+        tab_sensor_layout.setRowStretch(3,8)
+        tab_sensor_layout.setRowStretch(6,1)
 
         # 信号绑定
         self.action_add_btn.clicked.connect(self.add_sensor)
@@ -748,6 +750,12 @@ class SettingsPage(QWidget):
         self.action_reset_btn.clicked.connect(self.reset_config)
         self.action_clear_btn.clicked.connect(self.clear_config)
         self.action_apply_btn.clicked.connect(self.save_config)
+
+        if os.path.exists("sensor_config.json"):
+            with open("sensor_config.json", "r", encoding="utf-8") as f:
+                self.sensor_config = json.load(f)
+                self.tmpConfig = self.sensor_config.copy()
+                self.update_display()
 
         #############
         # 界面设置页 #
@@ -828,7 +836,7 @@ class SettingsPage(QWidget):
                 # 输入单位
                 unit, ok_unit = QInputDialog.getText(self, "数据单位", "输入单位:")
                 if ok_unit:
-                    entry = f"{data_name}({unit})"
+                    entry = {"name": data_name, "unit": unit}
                     self.tmpConfig[sensor].append(entry)
                     self.update_display()
 
@@ -843,8 +851,9 @@ class SettingsPage(QWidget):
                 QMessageBox.warning(self, "提示", "该传感器没有数据可删除")
                 return
             # 选择数据
-            data, ok_data = QInputDialog.getItem(self, "删除数据", "选择数据:", self.tmpConfig[sensor], 0, False)
+            data, ok_data = QInputDialog.getItem(self, "删除数据", "选择数据:", [f"{d['name']} ({d['unit']})" for d in self.tmpConfig[sensor]], 0, False)
             if ok_data:
+                data = {"name": data.split(" (")[0], "unit": data.split(" (")[1][:-1]}  # 解析出名字和单位
                 self.tmpConfig[sensor].remove(data)
                 self.update_display()
 
@@ -858,6 +867,9 @@ class SettingsPage(QWidget):
 
     def save_config(self):
         self.sensor_config = {k: v.copy() for k, v in self.tmpConfig.items()}
+        with open("sensor_config.json", "w", encoding="utf-8") as f:
+            json.dump(self.sensor_config, f, ensure_ascii=False, indent=4)
+        self.sensor_config_signal.emit(self.sensor_config)
         QMessageBox.information(self, "保存成功", "配置已保存")
 
     # ------------------------ 更新显示 ------------------------
@@ -866,7 +878,7 @@ class SettingsPage(QWidget):
         self.data_list.clear()
         for sensor, data_list in self.tmpConfig.items():
             self.sensor_list.addItem(sensor)
-            self.data_list.addItem(", ".join(data_list))
+            self.data_list.addItem(", ".join([f"{data['name']} ({data['unit']})" for data in data_list]))
 
 
 
