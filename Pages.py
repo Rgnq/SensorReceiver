@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QT
                             QToolButton, QSpacerItem, QSizePolicy, QGridLayout, QComboBox, QPushButton, 
                             QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox, QCalendarWidget, 
                             QDialog, QStyle, QTableWidgetItem, QSplitter, QInputDialog, QScrollArea, QFrame,
-                            QStackedWidget, QMenu, QDateTimeEdit)
+                            QStackedWidget, QMenu, QDateTimeEdit,QHeaderView)
 from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDateTime, Slot
 from serial.tools import list_ports
 import os, json, datetime
@@ -226,10 +226,7 @@ class Homepage(QWidget):
         self.plot_widgets[sensor_name] = image_page  # 存储绘图组件以便后续更新数据
         tab_widget.addTab(image_page, "图像")
 
-        # 统计页
-        stats_page = QLabel("统计数值区域(WIP)")
-        stats_page.setAlignment(Qt.AlignCenter)
-        tab_widget.addTab(stats_page, "统计")
+        # 统计页(废弃)
 
         bottom_layout.addWidget(tab_widget)
         bottom_scroll.setWidget(bottom_content)
@@ -579,6 +576,12 @@ class HistoryPage(QWidget):
                 for i, (ts, val) in enumerate(data_list):
                     table_tab.setItem(i, 0, QTableWidgetItem(str(ts)))
                     table_tab.setItem(i, 1, QTableWidgetItem(str(val)))
+                table_tab.setSizeAdjustPolicy(QTableWidget.AdjustToContents)  # 自动调整大小
+                table_tab.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)         # 第一列自适应拉伸
+                table_tab.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)  # 第二列自适应内容
+                table_tab.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 第三列自适应内容
+                table_tab.horizontalHeader().setStretchLastSection(True)  # 最后一列填充剩余空间
+                table_tab.verticalHeader().setVisible(False)  # 可选：隐藏行号
                 tab_widget.addTab(table_tab, "表格")
 
                 self.stack_sensors.addWidget(scroll_area)
