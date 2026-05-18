@@ -1,104 +1,70 @@
 from PySide6.QtWidgets import (QWidget, QTabWidget, QListWidget, QVBoxLayout, QTableWidget, QHBoxLayout, QLabel, 
                             QToolButton, QSpacerItem, QSizePolicy, QGridLayout, QComboBox, QPushButton, 
                             QLineEdit, QTextEdit, QCheckBox, QFileDialog, QMessageBox, QCalendarWidget, 
-                            QDialog, QStyle, QTableWidgetItem, QSplitter, QInputDialog)
-from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDate
+                            QDialog, QStyle, QTableWidgetItem, QSplitter, QInputDialog, QScrollArea, QFrame,
+                            QStackedWidget)
+from PySide6.QtCore import Qt, QPropertyAnimation, Signal, QDate, Slot
 from serial.tools import list_ports
+import os, json, time
+
 from Serial import SerialThread
 from PlotWidget import SensorPlotter
-import os, json, time
+from components import SensorDisplayWidget
+from styles import HOMEPAGE_STYLE
 
 class Homepage(QWidget):
     sendTextSignal = Signal(str)
     sendErrorSignal = Signal(str)
+    sensor_config = {}  # 用于存储传感器配置数据
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        
-        self.LIGHT_label = QLineEdit(". . .")
-        self.CO2_label = QLineEdit(". . .")
-        self.TVOC_label = QLineEdit(". . .")
-        self.TEMP_label = QLineEdit(". . .")
-        self.HUM_label = QLineEdit(". . .")
-        self.PRESS_label = QLineEdit(". . .")
+        #self.setStyleSheet(HOMEPAGE_STYLE)
 
         self.dataBuffer = []
-
-        self.labels = [self.TEMP_label, self.HUM_label, self.PRESS_label,
-                        self.LIGHT_label,
-                        self.CO2_label, self.TVOC_label
-                        ]
-        
-        for label in self.labels:
-            label.setReadOnly(True)
-        
-        self.dataNames = ["温度","湿度","压强","LIGHT","CO2","TVOC"]
-        self.THP_Data = dict(zip(self.dataNames[0:3],[0 for i in range(3)]))
-        self.BH1750_Data = dict(zip(self.dataNames[3:4],[0 for i in range(1)]))
-        self.Gas_Data = dict(zip(self.dataNames[4:6],[0 for i in range(2)]))
-        
-
         self.pathSave = "history"
-
-        for label in self.labels:
-            label.setStyleSheet("background-color: rgba(80,80,100,127)")
-
-        self.anims = {"Command":None,"Sensor":None}  # 用于存储动画对象
+        self.anims: dict[str, QPropertyAnimation | None] = {"Sensor":None}  # 用于存储动画对象
         self.settingExpanded = False  # 记录设置面板的展开状态
         self.sensorDisplay = True
         self.runtimeSave = None
 
         self.initUI()
 
-        self.setStyleSheet('''
-                        QLabel[text~="BH1750"], QLabel[text~="气体传感器"], QLabel[text~="温湿压传感器"]
-                        {background-color: #404040}
-                    ''')
-
-        self.right_vertical.serDataSignal.connect(self.updateDataDisplay)
-        self.right_vertical.stopSignal.connect(self.clearData)
-        self.right_vertical.sensorDisplayCheckbox.clicked.connect(self.toggleSensorWidget)
-
-
     def initUI(self):
-        # 外层布局
-        self.main_horizontal = QHBoxLayout(self)
-        self.main_horizontal.setObjectName("main_horizontal")
+        # ----------------- 主布局 -----------------
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.setSpacing(5)
 
-        # 左侧监测部分
-        self.left_content = QVBoxLayout()
-        self.left_content.setObjectName("left_content")
-        # 左侧监测部分--上方三块传感器数据区域
-        self.sensor_widget = QWidget()
-        self.sensor_horizontal = QHBoxLayout()
-        self.sensor_horizontal.setObjectName("sensor_horizontal")
-        # 第一块：bh1750 六轴传感器数据区块
-        self.bh1750_group = self._create_bh1750_grid()
-        self.sensor_horizontal.addLayout(self.bh1750_group, stretch=1)
-        # 第二块：气体传感器区块 (CO2 + TVOC)
-        self.gas_group = self._create_gas_grid()
-        self.sensor_horizontal.addLayout(self.gas_group, stretch=1)
-        # 第三块：温湿压传感器区块
-        self.env_group = self._create_thp_grid()
-        self.sensor_horizontal.addLayout(self.env_group, stretch=1)
-        self.sensor_widget.setLayout(self.sensor_horizontal)
-        self.sensor_widget.setMaximumHeight(150)
-        self.left_content.addWidget(self.sensor_widget)
+        # ----------------- 左侧监测部分 -------------------
+        left_main_vertical = QVBoxLayout()
+        main_layout.addLayout(left_main_vertical, stretch=4)
+        # ----------------- 左右可拖拽分隔 -----------------
+        horizontal_splitter = QSplitter(Qt.Horizontal)
+        left_main_vertical.addWidget(horizontal_splitter, 1)
 
-        # 左侧监测部分--下方留白
-        self.lowTab = QTabWidget()
-        self.lowTab.setStyleSheet("* {border-radius: 0px;}")
-        self.RegionPlot = SensorPlotter()
-        self.lowTab.addTab(self.RegionPlot,"图像")
-        self.DataAnalysis = AnalysisTab()
-        self.lowTab.addTab(self.DataAnalysis,"统计")
-        # self.left_content.addSpacerItem(
-        #     QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        # )
+        # ----------------- 左侧滚动区域（选择传感器） -----------------
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_content = QWidget()
+        left_layout = QVBoxLayout(left_content)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(5)
 
-        self.left_content.addWidget(self.lowTab)
-        self.left_content.setStretch(0, 2)
-        self.left_content.setStretch(1, 3)
+        # 传感器列表
+        self.sensor_list = QListWidget()
+        self.sensor_list.currentRowChanged.connect(self._on_sensor_selection_changed)
+
+        left_layout.addWidget(self.sensor_list)
+        left_scroll.setWidget(left_content)
+
+        horizontal_splitter.addWidget(left_scroll)
+        horizontal_splitter.setStretchFactor(0, 3)  # 左侧占比
+
+        # ----------------- 右侧区域（StackedWidget） -----------------
+        self.right_stack = QStackedWidget()
+        horizontal_splitter.addWidget(self.right_stack)
+        horizontal_splitter.setStretchFactor(1, 10)  # 右侧占比
 
         # 左侧监测部分--最下方命令输入行
         leftdown_horizontal = QHBoxLayout()
@@ -109,47 +75,43 @@ class Homepage(QWidget):
         self.sendlineButton.clicked.connect(self.sendText)
         leftdown_horizontal.addWidget(self.sendline)
         leftdown_horizontal.addWidget(self.sendlineButton)
-
-        self.left_content.addLayout(leftdown_horizontal)
-
-        self.main_horizontal.addLayout(self.left_content, stretch=4)
-
-        # 左侧监测部分与右侧工具按钮之间的间隔
-        self.main_horizontal.addSpacerItem(
-            QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Minimum)
-        )
+        left_main_vertical.addLayout(leftdown_horizontal)
 
         # 设置面板
-        self.right_vertical = CommandPanel()  # 直接使用 SettingsPage 作为右侧设置面板
-        self.right_vertical.setFixedWidth(0)  # 初始宽度为0，表示收起状态
-        self.main_horizontal.addWidget(self.right_vertical)
+        self.command_panel = CommandPanel()  # 直接使用 SettingsPage 作为右侧设置面板
+        self.command_panel.setFixedWidth(0)  # 初始宽度为0，表示收起状态
+        main_layout.addWidget(self.command_panel)
 
         # 工具按钮
         self.toolButton = QToolButton(self)
         self.toolButton.setObjectName("toolButton")
         self.toolButton.setStyleSheet("* {background-color: #404040}")
+        self.toolButton.setText("设\n置")
+        self.toolButton.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.toolButton.setArrowType(Qt.DownArrow)
         sp = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self.toolButton.setSizePolicy(sp)
-        self.toolButton.clicked.connect(self.toggleSettingPanel)
-        self.main_horizontal.addWidget(self.toolButton)
+        self.toolButton.clicked.connect(self._toggleSettingPanel)
+        main_layout.addWidget(self.toolButton)
 
-        # self.retranslateUi(self)
-        # QMetaObject.connectSlotsByName(self)   
+        if os.path.exists("sensor_config.json"):
+            with open("sensor_config.json", "r", encoding="utf-8") as f:
+                self.sensor_config = json.load(f)
+                self.update_sensor_config(self.sensor_config)
 
     def sendText(self):
         try:
-            if self.right_vertical.serState:
+            if self.command_panel.serState:
                 data = self.sendline.text()
                 self.sendTextSignal.emit(f"发送: {data}")
-                if self.right_vertical.sendMode.isChecked():
+                if self.command_panel.sendMode.isChecked():
                     if all(c in "0123456789abcdefABCDEF " for c in data):
                         data_bytes = bytes.fromhex(data)
-                        self.right_vertical.serThread.serial.write(data_bytes)
+                        self.command_panel.serThread.serial.write(data_bytes)
                     else:
                         raise Exception("非十六进制字符串")
                 else:
-                    self.right_vertical.serThread.serial.write(data.encode('utf-8'))
+                    self.command_panel.serThread.serial.write(data.encode('utf-8'))
                 #self.sendline.setText("")
             else:
                 self.sendTextSignal.emit("尚未连接")
@@ -159,157 +121,108 @@ class Homepage(QWidget):
 
     def updateDataDisplay(self,dataText:str):
         try:
-            dataList = dataText.strip().split(",")
-            dataListInt = [float(x) for x in dataList]
-            dataListStr = ["{:.2f}".format(x) for x in dataListInt]
-            for i, data in enumerate(dataListStr):
-                self.labels[i].setText(data)
-            self.BH1750_Data = dict(zip(self.dataNames[3:4],dataListInt[3:4]))
-            self.Gas_Data = dict(zip(self.dataNames[4:6],dataListInt[4:6]))
-            self.THP_Data = dict(zip(self.dataNames[0:3],dataListInt[0:3]))
-            self.RegionPlot.update_bh(self.BH1750_Data)
-            self.RegionPlot.update_gas(self.Gas_Data)
-            self.RegionPlot.update_thp(self.THP_Data)
-            if self.right_vertical.autoSaveStatus:
-                if self.runtimeSave is None:
-                    nowtime = time.strftime("%G_%m_%d_%H_%M_%S")
-                    path = f'{self.pathSave}/localsave_{nowtime}.csv'
-                    os.makedirs(os.path.dirname(path), exist_ok=True)
-                    self.runtimeSave = open(path,'a+',encoding='utf-8')
-                if self.runtimeSave:
-                    self.runtimeSave.write(f"{time.time()},"+','.join(dataList)+"\n")
-            self.dataBuffer.append(dataListInt)
-            if len(self.dataBuffer) > 10000:
-                self.dataBuffer.pop(0)
-            if self.dataBuffer:
-                transposed = list(zip(*self.dataBuffer))
-                self.DataAnalysis.analysisData(transposed)
+            pass
         except Exception as e:
-            self.right_vertical.serLogSignal.emit(f"错误：{e}")
-    
+            self.command_panel.serLogSignal.emit(f"错误：{e}")
+
     def clearData(self):
-        self.dataBuffer = []
-        self.DataAnalysis.analysisData(self.dataBuffer)
-        for label in self.labels:
-            label.setText(". . .")
-        self.RegionPlot.reset()
-        if self.runtimeSave:
-            self.runtimeSave.close()
-            self.runtimeSave = None
+        pass
 
-    def toggleSensorWidget(self):
-        startHeight = self.sensor_widget.height()
-        if self.sensorDisplay:
-            self.animateWidgetDisplay("Sensor", startHeight,0,self.sensor_widget,"maximumHeight")
-        else:
-            self.animateWidgetDisplay("Sensor", startHeight,150,self.sensor_widget,"maximumHeight")
-        self.sensorDisplay = not self.sensorDisplay
-
-    def toggleSettingPanel(self):
-        startWidth = self.right_vertical.width()
+    def _toggleSettingPanel(self):
+        startWidth = self.command_panel.width()
         if self.settingExpanded:
             # 收起设置面板
-            self.animateWidgetDisplay("Command", startWidth,0,self.right_vertical,"maximumWidth")
+            self._animateWidgetDisplay("Command", startWidth,0,self.command_panel,"maximumWidth")
             self.toolButton.setArrowType(Qt.DownArrow)
         else:
             # 展开设置面板
-            self.animateWidgetDisplay("Command", startWidth,300,self.right_vertical,"maximumWidth")
+            self._animateWidgetDisplay("Command", startWidth,300,self.command_panel,"maximumWidth")
             self.toolButton.setArrowType(Qt.LeftArrow)
         self.settingExpanded = not self.settingExpanded
 
-    # def animateSettingPanel(self, expand: bool):
-    #     start_width = self.right_vertical.width()
-    #     end_width = 300 if expand else 0
-
-    #     if self.anim and self.anim.state() == QPropertyAnimation.Running:
-    #         self.anim.stop()
-
-    #     self.anim = QPropertyAnimation(self.right_vertical, b"maximumWidth")
-    #     self.anim.setDuration(200)
-    #     self.anim.setStartValue(start_width)
-    #     self.anim.setEndValue(end_width)
-    #     self.anim.start()
-    def animateWidgetDisplay(self, anime, start, end, widget, property, duration=200):
+    def _animateWidgetDisplay(self, anime, start, end, widget, property, duration=200):
         self.anims[anime] = QPropertyAnimation(widget, bytes(property,encoding='utf-8'))
         self.anims[anime].setDuration(duration)
         self.anims[anime].setStartValue(start)
         self.anims[anime].setEndValue(end)
         self.anims[anime].start()
 
-
-    def _create_bh1750_grid(self):
-        """ BH1750 """
-        grid = QGridLayout()
-        grid.setObjectName("bh1750_grid")
-
-        # 标题
-        title = QLabel("BH1750")
-        title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
-        grid.addWidget(title, 0, 0, 1, 4)
-
-        # X轴
-        grid.addWidget(QLabel("LIGHT"), 1, 0)
-        grid.addWidget(self.LIGHT_label, 1, 1)
+    def update_sensor_config(self, sensor_config: dict):
+        self.sensor_config = sensor_config
+         # 清空左侧列表和右侧Stack
+        self.sensor_list.clear()
+        self._clear_stacked_widget()
         
+        for idx,(sensor, data_list) in enumerate(sensor_config.items()):
+            self.sensor_list.addItem(f"{sensor}")
+            page = self._create_sensor_page(data_list)
+            self.right_stack.addWidget(page)
+    
+    def _create_sensor_page(self, data_list: list):
+        page = QWidget()
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.setSpacing(5)
 
-        grid.setRowStretch(0, 1)
-        grid.setRowStretch(1, 2)
-        grid.setRowStretch(2, 2)
-        grid.setRowStretch(3, 2)
+        # 右侧上下分割器
+        vertical_splitter = QSplitter(Qt.Vertical)
+        page_layout.addWidget(vertical_splitter)
 
-        return grid
+        # 上部滚动区 + 网格布局
+        top_scroll = QScrollArea()
+        top_scroll.setWidgetResizable(True)
+        top_content = QWidget()
+        top_layout = QGridLayout(top_content)
+        top_layout.setContentsMargins(5, 5, 5, 5)
+        top_layout.setSpacing(10)
+        self._add_data_grid(data_list, top_layout)
+        top_scroll.setWidget(top_content)
+        vertical_splitter.addWidget(top_scroll)
 
-    def _create_gas_grid(self):
-        """ 气体传感器区块 (CO2 + TVOC) """
-        grid = QGridLayout()
-        grid.setObjectName("gas_grid")
+        # 下部滚动区 + TabWidget
+        bottom_scroll = QScrollArea()
+        bottom_scroll.setWidgetResizable(True)
+        bottom_content = QWidget()
+        bottom_layout = QVBoxLayout(bottom_content)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+        bottom_layout.setSpacing(5)
 
-        title = QLabel("气体传感器")
-        title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
-        grid.addWidget(title, 0, 0, 1, 2)
+        tab_widget = QTabWidget()
+        # 图像页
+        image_page = QLabel("图像区域")
+        image_page.setAlignment(Qt.AlignCenter)
+        tab_widget.addTab(image_page, "图像")
 
-        grid.addWidget(QLabel("CO2"), 1, 0)
-        grid.addWidget(self.CO2_label, 1, 1)
+        # 统计页
+        stats_page = QLabel("统计数值区域")
+        stats_page.setAlignment(Qt.AlignCenter)
+        tab_widget.addTab(stats_page, "统计")
 
-        grid.addWidget(QLabel("TVOC"), 2, 0)
-        grid.addWidget(self.TVOC_label, 2, 1)
+        bottom_layout.addWidget(tab_widget)
+        bottom_scroll.setWidget(bottom_content)
+        vertical_splitter.addWidget(bottom_scroll)
+        vertical_splitter.setStretchFactor(0, 1)
+        vertical_splitter.setStretchFactor(1, 8)
 
-        grid.addItem(
-            QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding),
-            3, 0, 1, 2
-        )
+        return page
 
-        grid.setRowStretch(0, 1)
-        grid.setRowStretch(1, 2)
-        grid.setRowStretch(2, 2)
-        grid.setRowStretch(3, 2)
+    def _add_data_grid(self, data_list: list, layout: QGridLayout):
+        for i, data in enumerate(data_list):
+            data_card = SensorDisplayWidget(data)
+            row = i // 3
+            col = i % 3
+            layout.addWidget(data_card, row, col)
 
-        return grid
+    def _clear_stacked_widget(self):
+        while self.right_stack.count() > 0:
+            widget = self.right_stack.widget(0)
+            self.right_stack.removeWidget(widget)
+            widget.deleteLater()
 
-    def _create_thp_grid(self):
-        """ 温湿压传感器 """
-        grid = QGridLayout()
-        grid.setObjectName("env_grid")
-
-        title = QLabel("温湿压传感器")
-        title.setAlignment(Qt.AlignCenter | Qt.AlignCenter)
-        grid.addWidget(title, 0, 0, 1, 2)
-
-        grid.addWidget(QLabel("温度"), 1, 0)
-        grid.addWidget(self.TEMP_label, 1, 1)
-
-        grid.addWidget(QLabel("湿度"), 2, 0)
-        grid.addWidget(self.HUM_label, 2, 1)
-
-        grid.addWidget(QLabel("压强"), 3, 0)
-        grid.addWidget(self.PRESS_label, 3, 1)
-
-        grid.setRowStretch(0, 1)
-        grid.setRowStretch(1, 2)
-        grid.setRowStretch(2, 2)
-        grid.setRowStretch(3, 2)
-
-        return grid
+    @Slot(int)
+    def _on_sensor_selection_changed(self, current_row):
+        if current_row >= 0 and current_row < self.right_stack.count():
+            self.right_stack.setCurrentIndex(current_row)
     
 class CommandPanel(QWidget):
     serDataSignal = Signal(str)  # 定义一个信号，用于接收串口数据
@@ -337,7 +250,6 @@ class CommandPanel(QWidget):
         self.autosaveCheckBox = QCheckBox("启用")
         # self.autosaveIntervalLineEdit = QLineEdit()
         self.autosaveIntervalButton = QPushButton("设置")
-        self.sensorDisplayCheckbox = QCheckBox("显示仪表盘")
         self.sendMode = QCheckBox("发送Bytes")
         self.TextCopy = QTextEdit()
         self.TextCopy.setReadOnly(True)
@@ -358,23 +270,17 @@ class CommandPanel(QWidget):
 
         self.gridlayout.addWidget(QLabel("自动保存"), 4, 0)
         self.gridlayout.addWidget(self.autosaveCheckBox, 4, 1)
-        # layout.addWidget(self.autosaveIntervalLineEdit, 5, 0)
-        # layout.addWidget(self.autosaveIntervalButton, 5, 1)
         self.autosaveCheckBox.setChecked(True)  # 默认启用自动保存
-        # self.autosaveIntervalLineEdit.setText("60")  # 默认自动保存间隔
 
-        self.gridlayout.addWidget(self.sendMode, 5, 1)
+        self.gridlayout.addWidget(self.sendMode, 3, 1)
         self.sendMode.setChecked(True)
 
-        self.gridlayout.addWidget(self.sensorDisplayCheckbox,6,0,1,2)
-        self.sensorDisplayCheckbox.setChecked(True)
-
-        self.gridlayout.addWidget(self.TextCopy,7,0,1,2)
+        self.gridlayout.addWidget(self.TextCopy,6,0,1,2)
 
         self.gridlayout.setColumnStretch(0, 4)
         self.gridlayout.setColumnStretch(1, 0)
         self.gridlayout.setColumnStretch(2, 0)
-        self.gridlayout.setRowStretch(7, 1)  # 添加伸缩项，推送内容到顶部
+        self.gridlayout.setRowStretch(6, 1)  # 添加伸缩项，推送内容到顶部
 
     def FillcomboxPorts(self):
         self.selectPortComboBox.clear()

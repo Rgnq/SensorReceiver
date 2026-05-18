@@ -1,6 +1,8 @@
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame
 from PySide6.QtCore import Qt
 
+from styles import sensor_display_stylesheet
+
 class SensorDisplayWidget(QFrame):
     def __init__(self, sensor_info: dict, parent=None):
         """
@@ -15,24 +17,7 @@ class SensorDisplayWidget(QFrame):
         # 设置 QFrame 样式，类似卡片风格
         self.setFrameShape(QFrame.StyledPanel)
         self.setFrameShadow(QFrame.Raised)
-        self.setStyleSheet("""
-            QFrame {
-                background-color: #1e1e2f;
-                border-radius: 10px;
-                border: 1px solid #444;
-            }
-            QLabel {
-                color: #ffffff;
-            }
-            QLabel#valueLabel {
-                font-size: 24px;
-                font-weight: bold;
-            }
-            QLabel#unitLabel {
-                font-size: 14px;
-                color: #aaa;
-            }
-        """)
+        self.setStyleSheet(sensor_display_stylesheet)
 
         # 主布局
         main_layout = QVBoxLayout()

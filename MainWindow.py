@@ -15,8 +15,8 @@ class MainWindow(QMainWindow):
         self.sidebar.clickedSignal.connect(self.on_sidebar_button_clicked)
         self.Homepage.sendTextSignal.connect(self.LogInfo)
         self.Homepage.sendErrorSignal.connect(self.LogError)
-        self.Homepage.right_vertical.serDataSignal.connect(self.LogInfo)
-        self.Homepage.right_vertical.serLogSignal.connect(self.LogError)
+        self.Homepage.command_panel.serDataSignal.connect(self.LogInfo)
+        self.Homepage.command_panel.serLogSignal.connect(self.LogError)
         self.LogPage.textedit.textChanged.connect(self.syncLog)
         self.SettingsPage.pathSaveSignal.connect(self.setSavePath)
     
@@ -27,12 +27,12 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Sensor Receiver")
         self.setGeometry(100, 100, 1200, 900)
         self.setWindowFlag(Qt.FramelessWindowHint)
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        #self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet("""
                 * {
                     font-family: 'Microsoft Yahei';
                     font-size: 20px;
-                    border-radius: 0px;
+
                 }
                 """)
         self.movecenter()
@@ -112,9 +112,9 @@ class MainWindow(QMainWindow):
         self.LogPage.append_log(f'{text}',2)
 
     def syncLog(self):
-        self.Homepage.right_vertical.TextCopy.setText(self.LogPage.textedit.toPlainText())
-        self.Homepage.right_vertical.TextCopy.moveCursor(QTextCursor.End)
-        self.Homepage.right_vertical.TextCopy.ensureCursorVisible()
+        self.Homepage.command_panel.TextCopy.setText(self.LogPage.textedit.toPlainText())
+        self.Homepage.command_panel.TextCopy.moveCursor(QTextCursor.End)
+        self.Homepage.command_panel.TextCopy.ensureCursorVisible()
 
     def setSavePath(self,path):
         self.Homepage.pathSave = path
@@ -137,8 +137,8 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
         if self.menubar.timer.isActive():
             self.menubar.timer.stop()
-        if self.Homepage.right_vertical.serState:
-            self.Homepage.right_vertical.stopSerialThread()
+        if self.Homepage.command_panel.serState:
+            self.Homepage.command_panel.stopSerialThread()
         if self.Homepage.runtimeSave:
             self.Homepage.runtimeSave.close()
         

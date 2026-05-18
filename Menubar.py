@@ -13,7 +13,8 @@ class Menubar(QWidget):
         
         self.setFixedHeight(40)
         self.setStyleSheet("""
-            background: #2d2d2d;
+            background: #222c33;
+            border-radius: 0px;
         """)
         
         layout = QHBoxLayout(self)
@@ -22,24 +23,20 @@ class Menubar(QWidget):
         
         # 窗口标题
         self.titleWidget = QWidget()
+        self.titleWidget.setStyleSheet("border-bottom-right-radius: 10px;")
         self.titleWidget.setLayout(QHBoxLayout())
         self.title = QLabel("")
         self.title.setStyleSheet("color: white; font-size: 16px; padding-left: 10px;")
         self.titleTime = QLabel("当前时间：")
         self.titleWidget.layout().addWidget(self.title)
         self.titleWidget.layout().addWidget(self.titleTime)
-        #self.title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        
-        # 窗口图标（可选）
-        # icon_label = QLabel("")
-        # #icon_label.setPixmap(QIcon("app_icon.png").pixmap(20, 20))
-        # icon_label.setFixedSize(20, 20)
         
         # 按钮区域
         btn_widget = QWidget()
+        btn_widget.setStyleSheet("border-bottom-left-radius: 10px;")
         btn_layout = QHBoxLayout(btn_widget)
         btn_layout.setContentsMargins(0, 0, 0, 0)
-        btn_layout.setSpacing(8)
+        btn_layout.setSpacing(0)
         
         self.min_btn = QPushButton("−")
         self.max_btn = QPushButton("□")
