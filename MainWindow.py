@@ -9,8 +9,15 @@ from Pages import Homepage, HistoryPage, SettingsPage, LogPage
 from components import DataReceiverParse
 
 class MainWindow(QMainWindow):
+
+    EDGE_MARGIN = 10  # 边缘拖拽有效区域像素
+
     def __init__(self):
         super().__init__()
+
+        self._resizing = False
+        self._resize_dir = None
+        self._mouse_pos = None
 
         self.initUI()
 
@@ -76,6 +83,13 @@ class MainWindow(QMainWindow):
             self.stacked_widget.addWidget(page)
         content_layout.addWidget(self.stacked_widget,1)
 
+        self.setMouseTracking(True)  # 整个窗口都追踪鼠标
+        self.centralWidget().setMouseTracking(True)  # 中央部件也追踪
+        self.sidebar.setMouseTracking(True)
+        self.stacked_widget.setMouseTracking(True)
+        for i in range(self.stacked_widget.count()):
+            self.stacked_widget.widget(i).setMouseTracking(True)
+
     def initPages(self):
         self.pages_names = ["实时数据", "历史记录", "日志", "设置"]
         self.pages_icons = {
@@ -126,6 +140,71 @@ class MainWindow(QMainWindow):
         self.Homepage.on_sensor_config_updated()
         DataReceiverParse.update_sensor_config()
 
+    #################################################
+    def get_edge_direction(self, pos):
+        rect = self.rect()
+        x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
+        margin = self.EDGE_MARGIN
+        direction = []
+
+        if pos.y() <= margin:
+            direction.append('top')
+        elif pos.y() >= h - margin:
+            direction.append('bottom')
+        if pos.x() <= margin:
+            direction.append('left')
+        elif pos.x() >= w - margin:
+            direction.append('right')
+
+        return direction
+        # ---------- 修改/新增 ----------
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._resize_dir = self.get_edge_direction(event.pos())
+            if self._resize_dir:
+                self._resizing = True
+                self._mouse_pos = event.globalPos()
+            else:
+                self._resizing = False
+                self._mouse_pos = event.globalPos()
+        super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event):
+        if self._resizing:
+            diff = event.globalPos() - self._mouse_pos
+            geo = self.geometry()
+
+            if 'left' in self._resize_dir:
+                geo.setLeft(geo.left() + diff.x())
+            if 'right' in self._resize_dir:
+                geo.setRight(geo.right() + diff.x())
+            if 'top' in self._resize_dir:
+                geo.setTop(geo.top() + diff.y())
+            if 'bottom' in self._resize_dir:
+                geo.setBottom(geo.bottom() + diff.y())
+
+            self.setGeometry(geo)
+            self._mouse_pos = event.globalPos()
+        else:
+            directions = self.get_edge_direction(event.pos())
+            if directions:
+                if 'left' in directions and 'top' in directions or 'right' in directions and 'bottom' in directions:
+                    self.setCursor(Qt.SizeFDiagCursor)
+                elif 'right' in directions and 'top' in directions or 'left' in directions and 'bottom' in directions:
+                    self.setCursor(Qt.SizeBDiagCursor)
+                elif 'left' in directions or 'right' in directions:
+                    self.setCursor(Qt.SizeHorCursor)
+                elif 'top' in directions or 'bottom' in directions:
+                    self.setCursor(Qt.SizeVerCursor)
+            else:
+                self.setCursor(Qt.ArrowCursor)
+
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._resizing = False
+        self._resize_dir = None
+        super().mouseReleaseEvent(event)
 
     def movecenter(self):
         # 获取屏幕可用区域的中心点
