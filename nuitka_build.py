@@ -22,22 +22,22 @@ def get_dist_dir():
     """获取发布输出目录"""
     return get_project_root() / "output" / "dist"
 
-def prepare_resources():
-    """准备资源文件"""
-    project_root = get_project_root()
+# def prepare_resources():
+#     """准备资源文件"""
+#     project_root = get_project_root()
     
-    # 确保资源目录存在
-    i18n_dir = project_root / "i18n"
-    config_dir = project_root / "config"
+#     # 确保资源目录存在
+#     i18n_dir = project_root / "i18n"
+#     config_dir = project_root / "config"
     
-    print(f"✓ i18n 目录: {i18n_dir}")
-    print(f"✓ config 目录: {config_dir}")
+#     print(f"✓ i18n 目录: {i18n_dir}")
+#     print(f"✓ config 目录: {config_dir}")
     
-    if not i18n_dir.exists():
-        print(f"✗ 错误: i18n 目录不存在")
-        return False
+#     if not i18n_dir.exists():
+#         print(f"✗ 错误: i18n 目录不存在")
+#         return False
     
-    return True
+#     return True
 
 def build_with_nuitka(standalone=True, onefile=True, compiler="mingw64"):
     """
@@ -71,6 +71,7 @@ def build_with_nuitka(standalone=True, onefile=True, compiler="mingw64"):
     # 不跟踪的导入（加快构建速度）
     cmd.extend([
         "--nofollow-import-to=matplotlib",  # matplotlib 库较大，不需要跟踪
+        "--nofollow-import-to=scipy",       # scipy 库较大，不需要跟踪
         "--follow-imports",                 # 但要跟踪其他导入
     ])
     
@@ -87,10 +88,10 @@ def build_with_nuitka(standalone=True, onefile=True, compiler="mingw64"):
     ])
     
     # 数据文件包含
-    cmd.extend([
-        "--include-data-dir=i18n=i18n",      # 包含 i18n 目录
-        "--include-data-dir=config=config",  # 包含 config 目录
-    ])
+    # cmd.extend([
+    #     "--include-data-dir=i18n=i18n",      # 包含 i18n 目录
+    #     "--include-data-dir=config=config",  # 包含 config 目录
+    # ])
     
     # Windows 特定选项
     cmd.extend([
@@ -202,10 +203,11 @@ def main():
     
     # 步骤1: 准备资源
     print("[1/4] 检查资源文件...")
-    if not prepare_resources():
-        return 1
-    print()
-    
+    # if not prepare_resources():
+    #     return 1
+    # print()
+    print("跳过")
+
     # 步骤2: 构建
     print("[2/4] 使用 Nuitka 构建 (编译器: {})...".format(args.compiler))
     if not build_with_nuitka(standalone=args.standalone, onefile=args.onefile, compiler=args.compiler):
