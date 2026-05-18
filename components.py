@@ -1,7 +1,8 @@
 from PySide6.QtWidgets import (QLabel, QVBoxLayout, QHBoxLayout, QFrame, QDialog, QTableWidget, 
                                QTableWidgetItem, QPushButton, QLineEdit, QHeaderView, QInputDialog)
-
 from PySide6.QtCore import Qt
+import os, json
+
 
 from styles import sensor_display_stylesheet
 
@@ -179,3 +180,71 @@ class DataModifyDialog(QDialog):
         if new_unit:
             self.data_list[self.selected_row]["unit"] = new_unit
         self.update_table()
+
+class DataReceiverParse:
+
+    sensor_config: dict[str, list] = {}
+
+    def __init__(self, data_format="csv"):
+        self.data_format = data_format  # "kv" 或 "csv"
+        if os.path.exists("sensor_config.json"):
+            with open("sensor_config.json", "r", encoding="utf-8") as f:
+                self.sensor_config = json.load(f)
+
+    def parse_kv_data(self, data_str):
+        """
+        假设数据格式为 "传感器名称:数值单位;传感器名称:数值单位;..."
+        例如: "温度:25.3℃;湿度:60%;压强:1013hPa"
+        返回格式: {"温度": {"value": 25.3, "unit": "℃"}, "湿度": {"value": 60, "unit": "%"}, ...}
+        """
+        data_dict = {}
+        try:
+            sensor_entries = data_str.split(';')
+            for entry in sensor_entries:
+                if ':' in entry:
+                    name_part, value_unit_part = entry.split(':', 1)
+                    name = name_part.strip()
+                    value_str = ''.join(filter(lambda c: (c.isdigit() or c == '.'), value_unit_part))
+                    unit_str = ''.join(filter(lambda c: not (c.isdigit() or c == '.'), value_unit_part)).strip()
+                    value = float(value_str) if value_str else 0
+                    data_dict[name] = {"value": value, "unit": unit_str}
+        except Exception as e:
+            print(f"数据解析错误: {e}")
+        return data_dict
+    
+    def parse_csv_data(self, data_str):
+        """
+        假设数据格式为 "数值,数值,数值..."
+        例如: "25.3,60,1013"
+        返回格式: {"温湿度传感器": [{"name": "温度", "unit": "℃", "value": 25.3}, {"name": "湿度", "unit": "%", "value": 60}, ...]}
+        """
+        data_dict = {}
+
+        try:
+            data_entries = data_str.split(',')
+            expected_data_count = len([data for sensor in self.sensor_config.values() for data in sensor])
+            if len(data_entries) != expected_data_count:
+                print(f"数据数量不匹配: 期望 {expected_data_count} 个数据，但收到 {len(data_entries)} 个")
+                return {}
+
+            index = 0
+            for sensor, data_list in self.sensor_config.items():
+                for data_info in data_list:
+                    if index < len(data_entries):
+                        value_str = data_entries[index].strip()
+                        value = float(value_str) if value_str else 0
+                        if sensor not in data_dict:
+                            data_dict[sensor] = []
+                        data_dict[sensor].append({"name": data_info["name"], "unit": data_info["unit"], "value": value})
+                        index += 1
+
+        except Exception as e:
+            print(f"数据解析错误: {e}")
+        return data_dict
+    
+
+    
+    def update_sensor_config(self):
+        if os.path.exists("sensor_config.json"):
+            with open("sensor_config.json", "r", encoding="utf-8") as f:
+                self.sensor_config = json.load(f)

@@ -9,7 +9,7 @@ import os, json, time
 
 from Serial import SerialThread
 from PlotWidget import SensorPlotter
-from components import SensorDisplayWidget, DataModifyDialog
+from components import SensorDisplayWidget, DataModifyDialog, DataReceiverParse
 import styles
 
 class Homepage(QWidget):
@@ -22,6 +22,8 @@ class Homepage(QWidget):
         #self.setStyleSheet(HOMEPAGE_STYLE)
 
         self.dataBuffer = []
+        self.data_cards: dict[str, dict[str, SensorDisplayWidget]] = {}  # 存储传感器数据卡片的字典，格式: {"传感器名称": {"name": data_card, ...}, ...}
+        self.parse = DataReceiverParse(data_format="csv")  # 创建数据解析器实例
         self.pathSave = "history"
         self.anims: dict[str, QPropertyAnimation | None] = {"Sensor":None}  # 用于存储动画对象
         self.settingExpanded = False  # 记录设置面板的展开状态
@@ -29,6 +31,9 @@ class Homepage(QWidget):
         self.runtimeSave = None
 
         self.initUI()
+
+        self.command_panel.serDataSignal.connect(self.updateDataDisplay)
+        self.command_panel.stopSignal.connect(self.clearData)
 
     def initUI(self):
         # ----------------- 主布局 -----------------
@@ -117,16 +122,26 @@ class Homepage(QWidget):
                 self.sendTextSignal.emit("尚未连接")
                 self.sendline.setText("")
         except Exception as e:
-            self.sendErrorSignal.emit(str(e))
+            self.sendErrorSignal.emit(f"发送错误: {e}")
 
     def updateDataDisplay(self,dataText:str):
         try:
-            pass
+            receive_data = self.parse.parse_csv_data(dataText)
+            # 处理解析后的数据
+            for sensor, data_list in receive_data.items():
+                if sensor in self.data_cards:
+                    for data_info in data_list:
+                        card = self.data_cards[sensor].get(data_info["name"])
+                        if card:
+                            card.set_value(data_info["value"])
+
         except Exception as e:
             self.command_panel.serLogSignal.emit(f"错误：{e}")
 
     def clearData(self):
-        pass
+        for sensor_cards in self.data_cards.values():
+            for card in sensor_cards.values():
+                card.set_value(0)
 
     def _toggleSettingPanel(self):
         startWidth = self.command_panel.width()
@@ -152,10 +167,11 @@ class Homepage(QWidget):
          # 清空左侧列表和右侧Stack
         self.sensor_list.clear()
         self._clear_stacked_widget()
+        self.data_cards.clear()
         
         for idx,(sensor, data_list) in enumerate(sensor_config.items()):
             self.sensor_list.addItem(f"{sensor}")
-            page = self._create_sensor_page(data_list)
+            page = self._create_sensor_page(data_list,sensor)
             self.right_stack.addWidget(page)
 
     def on_sensor_config_updated(self):
@@ -164,7 +180,7 @@ class Homepage(QWidget):
                 self.sensor_config = json.load(f)
                 self.update_sensor_config(self.sensor_config)
     
-    def _create_sensor_page(self, data_list: list):
+    def _create_sensor_page(self, data_list: list, sensor_name: str = "传感器") -> QWidget:
         page = QWidget()
         page_layout = QVBoxLayout(page)
         page_layout.setContentsMargins(0, 0, 0, 0)
@@ -181,7 +197,10 @@ class Homepage(QWidget):
         top_layout = QGridLayout(top_content)
         top_layout.setContentsMargins(5, 5, 5, 5)
         top_layout.setSpacing(10)
-        self._add_data_grid(data_list, top_layout)
+        data_cards = self._add_data_grid(data_list, top_layout)
+        self.data_cards[sensor_name] = {}
+        for data_info, card in zip(data_list, data_cards):
+            self.data_cards[sensor_name][data_info["name"]] = card
         top_scroll.setWidget(top_content)
         vertical_splitter.addWidget(top_scroll)
 
@@ -213,11 +232,14 @@ class Homepage(QWidget):
         return page
 
     def _add_data_grid(self, data_list: list, layout: QGridLayout):
+        data_cards = []
         for i, data in enumerate(data_list):
             data_card = SensorDisplayWidget(data)
+            data_cards.append(data_card)
             row = i // 3
             col = i % 3
             layout.addWidget(data_card, row, col)
+        return data_cards
 
     def _clear_stacked_widget(self):
         while self.right_stack.count() > 0:

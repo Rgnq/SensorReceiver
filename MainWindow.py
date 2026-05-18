@@ -6,6 +6,8 @@ from Sidebar import Sidebar
 from Menubar import Menubar
 from Pages import Homepage, HistoryPage, SettingsPage, LogPage
 
+from components import DataReceiverParse
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -19,7 +21,7 @@ class MainWindow(QMainWindow):
         self.Homepage.command_panel.serLogSignal.connect(self.LogError)
         self.LogPage.textedit.textChanged.connect(self.syncLog)
         self.SettingsPage.pathSaveSignal.connect(self.setSavePath)
-        self.SettingsPage.sensor_config_changed.connect(self.Homepage.on_sensor_config_updated)
+        self.SettingsPage.sensor_config_changed.connect(self.on_sensor_config_updated)
     
     def initUI(self):
         self.initPages()
@@ -119,6 +121,11 @@ class MainWindow(QMainWindow):
 
     def setSavePath(self,path):
         self.Homepage.pathSave = path
+
+    def on_sensor_config_updated(self):
+        self.Homepage.on_sensor_config_updated()
+        DataReceiverParse.update_sensor_config()
+
 
     def movecenter(self):
         # 获取屏幕可用区域的中心点
