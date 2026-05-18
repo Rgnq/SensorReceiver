@@ -28,7 +28,7 @@ class MainWindow(QMainWindow):
 
         # 创建无边框窗口
         self.setWindowTitle("Sensor Receiver")
-        self.setGeometry(100, 100, 1200, 900)
+        self.setGeometry(100, 100, 1400, 1000)
         self.setWindowFlag(Qt.FramelessWindowHint)
         #self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet("""

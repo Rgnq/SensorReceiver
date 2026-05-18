@@ -8,7 +8,7 @@ from serial.tools import list_ports
 import os, json, time
 
 from Serial import SerialThread
-from PlotWidget import SensorPlotter
+from PlotWidget import MultiPlotWidget
 from components import SensorDisplayWidget, DataModifyDialog, DataReceiverParse
 import styles
 
@@ -23,6 +23,7 @@ class Homepage(QWidget):
 
         self.dataBuffer = []
         self.data_cards: dict[str, dict[str, SensorDisplayWidget]] = {}  # 存储传感器数据卡片的字典，格式: {"传感器名称": {"name": data_card, ...}, ...}
+        self.plot_widgets: dict[str, MultiPlotWidget] = {}  # 存储传感器对应的绘图组件，格式: {"传感器名称": plot_widget, ...}
         self.parse = DataReceiverParse(data_format="csv")  # 创建数据解析器实例
         self.pathSave = "history"
         self.anims: dict[str, QPropertyAnimation | None] = {"Sensor":None}  # 用于存储动画对象
@@ -134,6 +135,8 @@ class Homepage(QWidget):
                         card = self.data_cards[sensor].get(data_info["name"])
                         if card:
                             card.set_value(data_info["value"])
+                if sensor in self.plot_widgets:
+                    self.plot_widgets[sensor].update_data(data_list)
 
         except Exception as e:
             self.command_panel.serLogSignal.emit(f"错误：{e}")
@@ -214,20 +217,20 @@ class Homepage(QWidget):
 
         tab_widget = QTabWidget()
         # 图像页
-        image_page = QLabel("图像区域")
-        image_page.setAlignment(Qt.AlignCenter)
+        image_page = MultiPlotWidget(data_list)
+        self.plot_widgets[sensor_name] = image_page  # 存储绘图组件以便后续更新数据
         tab_widget.addTab(image_page, "图像")
 
         # 统计页
-        stats_page = QLabel("统计数值区域")
+        stats_page = QLabel("统计数值区域(WIP)")
         stats_page.setAlignment(Qt.AlignCenter)
         tab_widget.addTab(stats_page, "统计")
 
         bottom_layout.addWidget(tab_widget)
         bottom_scroll.setWidget(bottom_content)
         vertical_splitter.addWidget(bottom_scroll)
-        vertical_splitter.setStretchFactor(0, 1)
-        vertical_splitter.setStretchFactor(1, 8)
+        vertical_splitter.setStretchFactor(0, 2)
+        vertical_splitter.setStretchFactor(1, 3)
 
         return page
 
@@ -439,7 +442,7 @@ class HistoryPage(QWidget):
         self.plotBtn.clicked.connect(self.plotData)
         main_layout.addWidget(self.plotBtn)
 
-        self.RegionPlot = SensorPlotter()
+        self.RegionPlot = MultiPlotWidget(plot_infos=[{"name": "温度", "unit": "°C"}, {"name": "湿度", "unit": "%"}])
         self.RegionPlot.setStyleSheet("* {border-radius: 0px;}")
         main_layout.addWidget(self.RegionPlot,1)
 
