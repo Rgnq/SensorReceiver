@@ -11,6 +11,7 @@ from Serial import SerialThread
 from PlotWidget import MultiPlotWidget
 from components import SensorDisplayWidget, DataModifyDialog, DataReceiverParse
 import styles
+from sensor_sql import SensorDB
 
 class Homepage(QWidget):
     sendTextSignal = Signal(str)
@@ -22,6 +23,7 @@ class Homepage(QWidget):
         #self.setStyleSheet(HOMEPAGE_STYLE)
 
         self.dataBuffer = []
+        self.db = SensorDB()
         self.data_cards: dict[str, dict[str, SensorDisplayWidget]] = {}  # 存储传感器数据卡片的字典，格式: {"传感器名称": {"name": data_card, ...}, ...}
         self.plot_widgets: dict[str, MultiPlotWidget] = {}  # 存储传感器对应的绘图组件，格式: {"传感器名称": plot_widget, ...}
         self.parse = DataReceiverParse(data_format="csv")  # 创建数据解析器实例
@@ -137,9 +139,11 @@ class Homepage(QWidget):
                             card.set_value(data_info["value"])
                 if sensor in self.plot_widgets:
                     self.plot_widgets[sensor].update_data(data_list)
+            self.db.insert_data(receive_data)
 
         except Exception as e:
             self.command_panel.serLogSignal.emit(f"错误：{e}")
+
 
     def clearData(self):
         for sensor_cards in self.data_cards.values():

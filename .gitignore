@@ -18,3 +18,5 @@ icon*
 .vscode/
 Markdown/
 output/
+sensor_data.db
+test.py
